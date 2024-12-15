@@ -17,7 +17,7 @@
             height: 100vh;
             text-align: center;
         }
-        
+
         .container {
             width: 90%;
             max-width: 600px;
@@ -26,24 +26,24 @@
             border-radius: 8px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
         }
-        
+
         header h1 {
             font-size: 2.5em;
             color: #ff9800;
             margin-bottom: 10px;
         }
-        
+
         header p {
             font-size: 1.2em;
             color: #b3b3b3;
         }
-        
+
         .search-form {
             display: flex;
             justify-content: center;
             margin-top: 30px;
         }
-        
+
         .search-form input {
             padding: 10px;
             font-size: 1em;
@@ -53,7 +53,7 @@
             background-color: #333;
             color: #fff;
         }
-        
+
         .search-form button {
             padding: 10px 20px;
             margin-left: 10px;
@@ -64,15 +64,15 @@
             color: #fff;
             cursor: pointer;
         }
-        
+
         .search-form button:hover {
             background-color: #ff5722;
         }
-        
+
         .player-container {
             margin-top: 30px;
         }
-        
+
         audio {
             width: 100%;
             border-radius: 5px;
@@ -99,29 +99,33 @@
     <script>
         const form = document.getElementById('searchForm');
         form.addEventListener('submit', async function(event) {
-            event.preventDefault();
+            event.preventDefault();  // Prevent form from refreshing the page
             const query = document.getElementById('query').value;
 
-            // Fetch the audio URL from the Flask backend
-            const response = await fetch('/search', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ query: query })
-            });
+            try {
+                // Fetch the audio URL from the Flask backend
+                const response = await fetch('/search', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ query: query })
+                });
 
-            const data = await response.json();
+                const data = await response.json();
 
-            if (data.error) {
-                alert(data.error);
-                return;
+                if (data.error) {
+                    alert(`Error: ${data.error}`);
+                    return;
+                }
+
+                const audioUrl = data.audio_url;
+
+                // Set the audio URL to the player and play it
+                const audioPlayer = document.getElementById('audioPlayer');
+                audioPlayer.src = audioUrl;
+                audioPlayer.play();
+            } catch (error) {
+                alert(`Failed to fetch song: ${error}`);
             }
-
-            const audioUrl = data.audio_url;
-
-            // Set the audio URL to the player and play it
-            const audioPlayer = document.getElementById('audioPlayer');
-            audioPlayer.src = audioUrl;
-            audioPlayer.play();
         });
     </script>
 </body>
