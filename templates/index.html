@@ -11,80 +11,56 @@
             color: #fff;
             margin: 0;
             padding: 0;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
             text-align: center;
         }
 
         .container {
-            width: 90%;
-            max-width: 600px;
             padding: 20px;
-            background-color: #181818;
-            border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
-        }
-
-        header h1 {
-            font-size: 2.5em;
-            color: #ff9800;
-            margin-bottom: 10px;
-        }
-
-        header p {
-            font-size: 1.2em;
-            color: #b3b3b3;
-        }
-
-        .search-form {
-            display: flex;
-            justify-content: center;
-            margin-top: 30px;
-        }
-
-        .search-form input {
-            padding: 10px;
-            font-size: 1em;
-            width: 70%;
-            border: 2px solid #ff9800;
-            border-radius: 5px;
-            background-color: #333;
-            color: #fff;
-        }
-
-        .search-form button {
-            padding: 10px 20px;
-            margin-left: 10px;
-            font-size: 1em;
-            background-color: #ff9800;
-            border: none;
-            border-radius: 5px;
-            color: #fff;
-            cursor: pointer;
-        }
-
-        .search-form button:hover {
-            background-color: #ff5722;
         }
 
         .player-container {
-            margin-top: 30px;
+            margin: 20px 0;
         }
 
         audio {
             width: 100%;
+            margin: 10px 0;
+        }
+
+        button {
+            padding: 10px;
+            margin: 5px;
+            background-color: #ff9800;
+            color: #fff;
+            border: none;
             border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #ff5722;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            margin: 5px 0;
+            cursor: pointer;
+            color: #ff9800;
+        }
+
+        li:hover {
+            color: #ff5722;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>RushitTunes</h1>
-            <p>Your personal music streaming platform</p>
-        </header>
+        <h1>RushitTunes</h1>
+        <p>Your personal music streaming platform</p>
 
         <form id="searchForm" class="search-form">
             <input type="text" id="query" placeholder="Search for a song..." required>
@@ -93,21 +69,28 @@
 
         <div id="playerContainer" class="player-container">
             <audio id="audioPlayer" controls></audio>
+            <button id="likeButton">Like</button>
+        </div>
+
+        <div id="likedSongsContainer" class="player-container">
+            <h2>Liked Songs</h2>
+            <ul id="likedSongsList"></ul>
+            <button id="clearLikedSongsButton">Clear Liked Songs</button>
         </div>
     </div>
 
     <script>
+        // Fetch the search form and handle search
         const form = document.getElementById('searchForm');
-        form.addEventListener('submit', async function(event) {
-            event.preventDefault();  // Prevent form from refreshing the page
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
             const query = document.getElementById('query').value;
 
             try {
-                // Fetch the audio URL from the Flask backend
                 const response = await fetch('/search', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query: query })
+                    body: JSON.stringify({ query })
                 });
 
                 const data = await response.json();
@@ -117,16 +100,80 @@
                     return;
                 }
 
-                const audioUrl = data.audio_url;
-
-                // Set the audio URL to the player and play it
                 const audioPlayer = document.getElementById('audioPlayer');
-                audioPlayer.src = audioUrl;
+                audioPlayer.src = data.audio_url;
                 audioPlayer.play();
             } catch (error) {
                 alert(`Failed to fetch song: ${error}`);
             }
         });
+
+        // Like button functionality
+        document.getElementById('likeButton').addEventListener('click', function () {
+            const audioPlayer = document.getElementById('audioPlayer');
+            const songTitle = document.getElementById('query').value || 'Unknown Song';
+            const songUrl = audioPlayer.src;
+
+            if (!songUrl) {
+                alert('No song is currently playing!');
+                return;
+            }
+
+            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
+
+            if (likedSongs.some(song => song.url === songUrl)) {
+                alert('This song is already liked!');
+                return;
+            }
+
+            likedSongs.push({ title: songTitle, url: songUrl });
+            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+
+            alert('Song liked successfully!');
+            fetchLikedSongs();
+        });
+
+        // Fetch and display liked songs
+        function fetchLikedSongs() {
+            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
+            const likedSongsList = document.getElementById('likedSongsList');
+
+            likedSongsList.innerHTML = '';
+
+            likedSongs.forEach((song, index) => {
+                const li = document.createElement('li');
+                li.textContent = song.title;
+                li.dataset.url = song.url;
+                li.addEventListener('click', () => playSongFromLiked(song.url, index, likedSongs));
+                likedSongsList.appendChild(li);
+            });
+        }
+
+        // Play liked song and auto-play the next
+        function playSongFromLiked(url, index, songs) {
+            const audioPlayer = document.getElementById('audioPlayer');
+            audioPlayer.src = url;
+            audioPlayer.play();
+
+            audioPlayer.onended = () => {
+                const nextIndex = index + 1;
+                if (nextIndex < songs.length) {
+                    playSongFromLiked(songs[nextIndex].url, nextIndex, songs);
+                }
+            };
+        }
+
+        // Clear liked songs
+        document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
+            if (confirm('Are you sure you want to clear all liked songs?')) {
+                localStorage.removeItem('likedSongs');
+                fetchLikedSongs();
+                alert('Liked songs cleared!');
+            }
+        });
+
+        // Load liked songs on page load
+        fetchLikedSongs();
     </script>
 </body>
 </html>
