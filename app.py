@@ -3,38 +3,30 @@ import yt_dlp
 
 app = Flask(__name__)
 
+# Function to fetch the audio URL from YouTube using yt-dlp
 def get_audio_url(query):
     search_url = f"ytsearch:{query}"
     ydl_opts = {
-        'format': 'bestaudio/best[ext=m4a]/bestaudio/best',
-        'noplaylist': True,
-        'quiet': True,
-        'cookiefile': 'cookies.txt',
-        'geo_bypass': True,
-        'geo_bypass_country': 'US',
-        'age_limit': 99,
-        'extractor_args': {
-            'youtube': {
-                'player_client': ['web', 'android']
-            }
-        },
+        'format': 'bestaudio/best',  # Best audio quality
+        'noplaylist': True,          # Don't fetch playlists
+        'quiet': True,               # Suppress logs
+        'cookiefile': 'cookies.txt', # Path to cookies.txt
     }
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(search_url, download=False)
-            entries = info.get('entries', [])
-            for video in entries:
-                if 'url' in video:
-                    return video['url']
-            raise RuntimeError("No valid audio found for this query.")
+            video = info['entries'][0]  # Get the first result
+            return video['url']         # Return the audio URL
     except Exception as e:
         raise RuntimeError(f"Error fetching audio: {str(e)}")
 
+# Route for the main page
 @app.route('/')
 def index():
     return render_template('index.html')
 
+# Route to handle the search request
 @app.route('/search', methods=['POST'])
 def search():
     data = request.json
