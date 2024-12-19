@@ -22,38 +22,41 @@
             margin: 20px 0;
         }
 
-        audio {
-            width: 100%;
+        .custom-audio-controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
             margin: 10px 0;
         }
 
-        button {
+        .custom-audio-controls button {
             padding: 10px;
-            margin: 5px;
-            background-color: #ff9800;
-            color: #fff;
             border: none;
-            border-radius: 5px;
+            border-radius: 50%;
+            background: linear-gradient(145deg, #ff5722, #ff9800);
+            color: #fff;
             cursor: pointer;
+            font-size: 1.2em;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+            transition: transform 0.2s;
         }
 
-        button:hover {
-            background-color: #ff5722;
+        .custom-audio-controls button:hover {
+            transform: scale(1.1);
         }
 
-        ul {
-            list-style: none;
-            padding: 0;
+        .custom-audio-controls button:active {
+            transform: scale(0.9);
         }
 
-        li {
-            margin: 5px 0;
-            cursor: pointer;
-            color: #ff9800;
-        }
-
-        li:hover {
-            color: #ff5722;
+        .custom-audio-controls .loop-enabled {
+            background: linear-gradient(145deg, #4caf50, #81c784);
         }
 
         .song-title {
@@ -63,8 +66,44 @@
         }
 
         .loading {
-            display: none;
             color: #ff9800;
+        }
+
+        #query {
+            padding: 10px;
+            width: 80%;
+            font-size: 1em;
+            border: 2px solid #ff9800;
+            border-radius: 5px;
+            background-color: #1e1e1e;
+            color: #fff;
+        }
+
+        #query:focus {
+            outline: none;
+            border-color: #ff5722;
+        }
+
+        #searchButton {
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        #searchButton img {
+            width: 24px;
+            height: 24px;
+        }
+
+        .heart-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+        }
+
+        .heart-button img {
+            width: 24px;
+            height: 24px;
         }
 
         @media (max-width: 600px) {
@@ -86,14 +125,22 @@
 
         <form id="searchForm" class="search-form">
             <input type="text" id="query" placeholder="Search for a song..." required>
-            <button type="submit">Search</button>
+            <button id="searchButton" type="submit">
+                <img src="magnifying-glass.png" alt="Search">
+            </button>
         </form>
-        <p id="loading" class="loading">Searching...</p>
+        <p id="loading" class="loading">Ready to search</p>
 
         <div id="playerContainer" class="player-container">
             <p id="songTitle" class="song-title">No song playing</p>
-            <audio id="audioPlayer" controls></audio>
-            <button id="likeButton">Like</button>
+            <audio id="audioPlayer"></audio>
+            <div class="custom-audio-controls">
+                <button id="playPauseButton">▶</button>
+                <button id="loopButton">🔁</button>
+                <button id="likeButton" class="heart-button">
+                    <img src="heart-icon.png" alt="Like">
+                </button>
+            </div>
         </div>
 
         <div id="likedSongsContainer" class="player-container">
@@ -104,16 +151,19 @@
     </div>
 
     <script>
-        // Fetch the search form and handle search
         const form = document.getElementById('searchForm');
         const loadingIndicator = document.getElementById('loading');
         const songTitle = document.getElementById('songTitle');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playPauseButton = document.getElementById('playPauseButton');
+        const loopButton = document.getElementById('loopButton');
+        let isLooping = false;
 
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
             const query = document.getElementById('query').value;
 
-            loadingIndicator.style.display = 'block';
+            loadingIndicator.textContent = `Searching for "${query}"...`;
 
             try {
                 const response = await fetch('/search', {
@@ -124,27 +174,41 @@
 
                 const data = await response.json();
 
-                loadingIndicator.style.display = 'none';
-
                 if (data.error) {
+                    loadingIndicator.textContent = 'Error occurred during search';
                     alert(`Error: ${data.error}`);
                     return;
                 }
 
-                const audioPlayer = document.getElementById('audioPlayer');
                 audioPlayer.src = data.audio_url;
                 audioPlayer.play();
 
-                songTitle.textContent = query;
+                songTitle.textContent = `Playing: ${query}`;
+                loadingIndicator.textContent = '';
+                playPauseButton.textContent = '⏸';
             } catch (error) {
-                loadingIndicator.style.display = 'none';
+                loadingIndicator.textContent = 'Error occurred during search';
                 alert(`Failed to fetch song: ${error}`);
             }
         });
 
-        // Like button functionality
+        playPauseButton.addEventListener('click', () => {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                playPauseButton.textContent = '⏸';
+            } else {
+                audioPlayer.pause();
+                playPauseButton.textContent = '▶';
+            }
+        });
+
+        loopButton.addEventListener('click', () => {
+            isLooping = !isLooping;
+            audioPlayer.loop = isLooping;
+            loopButton.classList.toggle('loop-enabled', isLooping);
+        });
+
         document.getElementById('likeButton').addEventListener('click', function () {
-            const audioPlayer = document.getElementById('audioPlayer');
             const songUrl = audioPlayer.src;
 
             if (!songUrl) {
@@ -152,7 +216,7 @@
                 return;
             }
 
-            const songTitleText = songTitle.textContent || 'Unknown Song';
+            const songTitleText = songTitle.textContent.replace('Playing: ', '') || 'Unknown Song';
             const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
 
             if (likedSongs.some(song => song.url === songUrl)) {
@@ -167,7 +231,6 @@
             fetchLikedSongs();
         });
 
-        // Fetch and display liked songs
         function fetchLikedSongs() {
             const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
             const likedSongsList = document.getElementById('likedSongsList');
@@ -183,13 +246,12 @@
             });
         }
 
-        // Play liked song and auto-play the next
         function playSongFromLiked(url, index, songs) {
-            const audioPlayer = document.getElementById('audioPlayer');
             audioPlayer.src = url;
             audioPlayer.play();
 
-            songTitle.textContent = songs[index].title;
+            songTitle.textContent = `Playing: ${songs[index].title}`;
+            playPauseButton.textContent = '⏸';
 
             audioPlayer.onended = () => {
                 const nextIndex = index + 1;
@@ -199,7 +261,6 @@
             };
         }
 
-        // Clear liked songs
         document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
             if (confirm('Are you sure you want to clear all liked songs?')) {
                 localStorage.removeItem('likedSongs');
@@ -208,7 +269,6 @@
             }
         });
 
-        // Load liked songs on page load
         fetchLikedSongs();
     </script>
 </body>
