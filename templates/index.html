@@ -112,30 +112,28 @@
         .progress-container {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            justify-content: center;
             margin: 10px 0;
         }
 
         .progress-bar {
-            flex: 1;
+            width: 80%;
             height: 5px;
             background-color: #ff9800;
             border-radius: 5px;
             position: relative;
-            overflow: hidden;
         }
 
-        .progress-bar span {
-            display: block;
+        .progress {
             height: 100%;
-            width: 0;
             background-color: #ff5722;
+            width: 0;
+            border-radius: 5px;
         }
 
-        .time {
-            color: #ff9800;
+        .time-display {
+            margin-left: 10px;
             font-size: 0.9em;
-            margin: 0 10px;
         }
 
         @media (max-width: 600px) {
@@ -146,6 +144,11 @@
             button {
                 padding: 8px;
                 font-size: 0.9em;
+            }
+
+            .progress-container {
+                flex-direction: column;
+                align-items: flex-start;
             }
         }
     </style>
@@ -167,11 +170,10 @@
             <p id="songTitle" class="song-title">No song playing</p>
             <audio id="audioPlayer" controls></audio>
             <div class="progress-container">
-                <span id="currentTime" class="time">0:00</span>
                 <div class="progress-bar">
-                    <span id="progress"></span>
+                    <div class="progress" id="progress"></div>
                 </div>
-                <span id="duration" class="time">0:00</span>
+                <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
             </div>
             <button id="likeButton" class="heart-button" aria-label="Like">
                 <i class="fas fa-heart"></i>
@@ -186,26 +188,13 @@
     </div>
 
     <script>
-        // Function to update the play/pause button icon
-        function updatePlayPauseIcon(isPlaying) {
-            const playPauseIcon = document.getElementById('playPauseIcon');
-            if (isPlaying) {
-                playPauseIcon.classList.remove('fa-play');
-                playPauseIcon.classList.add('fa-pause');
-            } else {
-                playPauseIcon.classList.remove('fa-pause');
-                playPauseIcon.classList.add('fa-play');
-            }
-        }
-
         // Fetch the search form and handle search
         const form = document.getElementById('searchForm');
         const loadingIndicator = document.getElementById('loading');
         const songTitle = document.getElementById('songTitle');
-        const progress = document.getElementById('progress');
-        const currentTimeElem = document.getElementById('currentTime');
-        const durationElem = document.getElementById('duration');
         const audioPlayer = document.getElementById('audioPlayer');
+        const progressBar = document.getElementById('progress');
+        const timeDisplay = document.getElementById('timeDisplay');
 
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
@@ -239,6 +228,23 @@
             }
         });
 
+        // Update progress bar and time display
+        audioPlayer.addEventListener('timeupdate', function () {
+            const currentTime = audioPlayer.currentTime;
+            const duration = audioPlayer.duration || 0;
+            const progressPercent = (currentTime / duration) * 100;
+
+            progressBar.style.width = progressPercent + '%';
+
+            const formatTime = time => {
+                const minutes = Math.floor(time / 60);
+                const seconds = Math.floor(time % 60).toString().padStart(2, '0');
+                return `${minutes}:${seconds}`;
+            };
+
+            timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+        });
+
         // Like button functionality
         document.getElementById('likeButton').addEventListener('click', function () {
             const songUrl = audioPlayer.src;
@@ -269,3 +275,42 @@
             const likedSongsList = document.getElementById('likedSongsList');
 
             likedSongsList.innerHTML = '';
+
+            likedSongs.forEach((song, index) => {
+                const li = document.createElement('li');
+                li.textContent = song.title;
+                li.dataset.url = song.url;
+                li.addEventListener('click', () => playSongFromLiked(song.url, index, likedSongs));
+                likedSongsList.appendChild(li);
+            });
+        }
+
+        // Play liked song and auto-play the next
+        function playSongFromLiked(url, index, songs) {
+            audioPlayer.src = url;
+            audioPlayer.play();
+
+            songTitle.textContent = `Playing: ${songs[index].title}`;
+
+            audioPlayer.onended = () => {
+                const nextIndex = index + 1;
+                if (nextIndex < songs.length) {
+                    playSongFromLiked(songs[nextIndex].url, nextIndex, songs);
+                }
+            };
+        }
+
+        // Clear liked songs
+        document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
+            if (confirm('Are you sure you want to clear all liked songs?')) {
+                localStorage.removeItem('likedSongs');
+                fetchLikedSongs();
+                alert('Liked songs cleared!');
+            }
+        });
+
+        // Load liked songs on page load
+        fetchLikedSongs();
+    </script>
+</body>
+</html>
