@@ -21,11 +21,37 @@
 
         .player-container {
             margin: 20px 0;
+            position: relative;
         }
 
         audio {
-            width: 100%;
-            margin: 10px 0;
+            display: none;
+        }
+
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            background-color: #1e1e1e;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        .audio-button {
+            background: none;
+            border: none;
+            color: #ff9800;
+            font-size: 1.5em;
+            cursor: pointer;
+        }
+
+        .audio-button:hover {
+            color: #ff5722;
+        }
+
+        .active {
+            color: #4caf50 !important;
         }
 
         button {
@@ -63,10 +89,6 @@
             color: #ff9800;
         }
 
-        .loading {
-            color: #ff9800;
-        }
-
         #query {
             padding: 10px;
             width: 80%;
@@ -94,29 +116,10 @@
             color: #ff5722;
         }
 
-        #clearLikedSongsButton {
-            padding: 10px 15px;
-            background-color: #ff9800;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            font-size: 1em;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        #clearLikedSongsButton:hover {
-            background-color: #ff5722;
-        }
-
         @media (max-width: 600px) {
-            audio {
-                width: 90%;
-            }
-
-            button {
-                padding: 8px;
-                font-size: 0.9em;
+            .audio-controls {
+                flex-direction: column;
+                gap: 10px;
             }
         }
     </style>
@@ -136,10 +139,18 @@
 
         <div id="playerContainer" class="player-container">
             <p id="songTitle" class="song-title">No song playing</p>
-            <audio id="audioPlayer" controls></audio>
-            <button id="likeButton" class="heart-button" aria-label="Like">
-                <i class="fas fa-heart"></i>
-            </button>
+            <audio id="audioPlayer"></audio>
+            <div class="audio-controls">
+                <button id="playPauseButton" class="audio-button">
+                    <i id="playPauseIcon" class="fas fa-play"></i>
+                </button>
+                <button id="loopButton" class="audio-button">
+                    <i id="loopIcon" class="fas fa-sync-alt"></i>
+                </button>
+                <button id="likeButton" class="heart-button" aria-label="Like">
+                    <i class="fas fa-heart"></i>
+                </button>
+            </div>
         </div>
 
         <div id="likedSongsContainer" class="player-container">
@@ -150,10 +161,16 @@
     </div>
 
     <script>
-        // Fetch the search form and handle search
         const form = document.getElementById('searchForm');
         const loadingIndicator = document.getElementById('loading');
         const songTitle = document.getElementById('songTitle');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playPauseButton = document.getElementById('playPauseButton');
+        const playPauseIcon = document.getElementById('playPauseIcon');
+        const loopButton = document.getElementById('loopButton');
+        const loopIcon = document.getElementById('loopIcon');
+
+        let isLooping = false;
 
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
@@ -176,9 +193,9 @@
                     return;
                 }
 
-                const audioPlayer = document.getElementById('audioPlayer');
                 audioPlayer.src = data.audio_url;
                 audioPlayer.play();
+                updatePlayPauseIcon(true);
 
                 songTitle.textContent = `Playing: ${query}`;
                 loadingIndicator.textContent = '';
@@ -188,74 +205,26 @@
             }
         });
 
-        // Like button functionality
-        document.getElementById('likeButton').addEventListener('click', function () {
-            const audioPlayer = document.getElementById('audioPlayer');
-            const songUrl = audioPlayer.src;
-
-            if (!songUrl) {
-                alert('No song is currently playing!');
-                return;
-            }
-
-            const songTitleText = songTitle.textContent.replace('Playing: ', '') || 'Unknown Song';
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-
-            if (likedSongs.some(song => song.url === songUrl)) {
-                alert('This song is already liked!');
-                return;
-            }
-
-            likedSongs.push({ title: songTitleText, url: songUrl });
-            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
-
-            alert('Song liked successfully!');
-            fetchLikedSongs();
-        });
-
-        // Fetch and display liked songs
-        function fetchLikedSongs() {
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-            const likedSongsList = document.getElementById('likedSongsList');
-
-            likedSongsList.innerHTML = '';
-
-            likedSongs.forEach((song, index) => {
-                const li = document.createElement('li');
-                li.textContent = song.title;
-                li.dataset.url = song.url;
-                li.addEventListener('click', () => playSongFromLiked(song.url, index, likedSongs));
-                likedSongsList.appendChild(li);
-            });
-        }
-
-        // Play liked song and auto-play the next
-        function playSongFromLiked(url, index, songs) {
-            const audioPlayer = document.getElementById('audioPlayer');
-            audioPlayer.src = url;
-            audioPlayer.play();
-
-            songTitle.textContent = `Playing: ${songs[index].title}`;
-
-            audioPlayer.onended = () => {
-                const nextIndex = index + 1;
-                if (nextIndex < songs.length) {
-                    playSongFromLiked(songs[nextIndex].url, nextIndex, songs);
-                }
-            };
-        }
-
-        // Clear liked songs
-        document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
-            if (confirm('Are you sure you want to clear all liked songs?')) {
-                localStorage.removeItem('likedSongs');
-                fetchLikedSongs();
-                alert('Liked songs cleared!');
+        playPauseButton.addEventListener('click', () => {
+            if (audioPlayer.paused) {
+                audioPlayer.play();
+                updatePlayPauseIcon(true);
+            } else {
+                audioPlayer.pause();
+                updatePlayPauseIcon(false);
             }
         });
 
-        // Load liked songs on page load
-        fetchLikedSongs();
+        loopButton.addEventListener('click', () => {
+            isLooping = !isLooping;
+            audioPlayer.loop = isLooping;
+            loopIcon.classList.toggle('active', isLooping);
+        });
+
+        function updatePlayPauseIcon(isPlaying) {
+            playPauseIcon.classList.toggle('fa-play', !isPlaying);
+            playPauseIcon.classList.toggle('fa-pause', isPlaying);
+        }
     </script>
 </body>
 </html>
