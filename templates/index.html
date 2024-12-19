@@ -180,122 +180,137 @@
         </div>
     </div>
 
-    <script>
-        const form = document.getElementById('searchForm');
-        const loadingIndicator = document.getElementById('loading');
-        const songTitle = document.getElementById('songTitle');
-        const audioPlayer = new Audio();
-        const progressBar = document.getElementById('progress');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const playPauseButton = document.getElementById('playPauseButton');
-        const playPauseIcon = document.getElementById('playPauseIcon');
+  <script>
+    const form = document.getElementById('searchForm');
+    const loadingIndicator = document.getElementById('loading');
+    const songTitle = document.getElementById('songTitle');
+    const audioPlayer = new Audio();
+    const progressBar = document.getElementById('progress');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const playPauseButton = document.getElementById('playPauseButton');
+    const playPauseIcon = document.getElementById('playPauseIcon');
 
-        form.addEventListener('submit', async function (event) {
-            event.preventDefault();
-            const query = document.getElementById('query').value;
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault(); // Prevent page refresh
+        const query = document.getElementById('query').value.trim();
 
-            loadingIndicator.textContent = `Searching for "${query}"...`;
-
-            try {
-                const response = await fetch('/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query })
-                });
-
-                const data = await response.json();
-
-                if (data.error) {
-                    loadingIndicator.textContent = 'Error occurred during search';
-                    alert(`Error: ${data.error}`);
-                    return;
-                }
-
-                audioPlayer.src = data.audio_url;
-                audioPlayer.play();
-                playPauseIcon.className = 'fas fa-pause';
-
-                songTitle.textContent = `Playing: ${query}`;
-                loadingIndicator.textContent = '';
-            } catch (error) {
-                loadingIndicator.textContent = 'Error occurred during search';
-                alert(`Failed to fetch song: ${error}`);
-            }
-        });
-
-        playPauseButton.addEventListener('click', function () {
-            if (audioPlayer.paused) {
-                audioPlayer.play();
-                playPauseIcon.className = 'fas fa-pause';
-            } else {
-                audioPlayer.pause();
-                playPauseIcon.className = 'fas fa-play';
-            }
-        });
-
-        audioPlayer.addEventListener('timeupdate', function () {
-            const currentTime = audioPlayer.currentTime;
-            const duration = audioPlayer.duration || 0;
-            const progressPercent = (currentTime / duration) * 100;
-
-            progressBar.style.width = progressPercent + '%';
-
-            const formatTime = time => {
-                const minutes = Math.floor(time / 60);
-                const seconds = Math.floor(time % 60).toString().padStart(2, '0');
-                return `${minutes}:${seconds}`;
-            };
-
-            timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
-        });
-
-        document.getElementById('likeButton').addEventListener('click', function () {
-            const songUrl = audioPlayer.src;
-
-            if (!songUrl) {
-                alert('No song is currently playing!');
-                return;
-            }
-
-            const songTitleText = songTitle.textContent.replace('Playing: ', '') || 'Unknown Song';
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-
-            if (likedSongs.some(song => song.url === songUrl)) {
-                alert('This song is already liked!');
-                return;
-            }
-
-            likedSongs.push({ title: songTitleText, url: songUrl });
-            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
-
-            alert('Song liked successfully!');
-            fetchLikedSongs();
-        });
-
-        function fetchLikedSongs() {
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-            const likedSongsList = document.getElementById('likedSongsList');
-
-            likedSongsList.innerHTML = '';
-
-            likedSongs.forEach((song, index) => {
-                const li = document.createElement('li');
-                li.textContent = song.title;
-                li.dataset.url = song.url;
-                li.addEventListener('click', () => playSongFromLiked(song.url, index, likedSongs));
-                likedSongsList.appendChild(li);
-            });
+        if (!query) {
+            alert('Please enter a valid search term.');
+            return;
         }
 
-        function playSongFromLiked(url, index, songs) {
-            audioPlayer.src = url;
+        loadingIndicator.textContent = `Searching for "${query}"...`;
+
+        try {
+            const response = await fetch('/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query }),
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                loadingIndicator.textContent = 'Error occurred during search';
+                alert(`Error: ${data.error}`);
+                return;
+            }
+
+            // Load the audio
+            audioPlayer.src = data.audio_url;
             audioPlayer.play();
             playPauseIcon.className = 'fas fa-pause';
+            songTitle.textContent = `Playing: ${query}`;
+            loadingIndicator.textContent = '';
+        } catch (error) {
+            loadingIndicator.textContent = 'Error occurred during search';
+            alert(`Failed to fetch song: ${error}`);
+        }
+    });
 
-            songTitle.textContent = `Playing: ${songs[index].title}`;
-            audioPlayer.onended = () => {
-                const nextIndex = index + 1
-            document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
+    playPauseButton.addEventListener('click', function () {
+        if (!audioPlayer.src) {
+            alert('No song is loaded. Please search for a song first.');
+            return;
+        }
+
+        if (audioPlayer.paused) {
+            audioPlayer.play();
+            playPauseIcon.className = 'fas fa-pause';
+        } else {
+            audioPlayer.pause();
+            playPauseIcon.className = 'fas fa-play';
+        }
+    });
+
+    audioPlayer.addEventListener('timeupdate', function () {
+        const currentTime = audioPlayer.currentTime || 0;
+        const duration = audioPlayer.duration || 0;
+
+        if (!isNaN(duration)) {
+            const progressPercent = (currentTime / duration) * 100;
+            progressBar.style.width = progressPercent + '%';
+        }
+
+        const formatTime = time => {
+            const minutes = Math.floor(time / 60);
+            const seconds = Math.floor(time % 60).toString().padStart(2, '0');
+            return `${minutes}:${seconds}`;
+        };
+
+        timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+    });
+
+    document.getElementById('likeButton').addEventListener('click', function () {
+        const songUrl = audioPlayer.src;
+
+        if (!songUrl) {
+            alert('No song is currently playing!');
+            return;
+        }
+
+        const songTitleText = songTitle.textContent.replace('Playing: ', '') || 'Unknown Song';
+        const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
+
+        if (likedSongs.some(song => song.url === songUrl)) {
+            alert('This song is already liked!');
+            return;
+        }
+
+        likedSongs.push({ title: songTitleText, url: songUrl });
+        localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+        fetchLikedSongs();
+        alert('Song liked successfully!');
+    });
+
+    function fetchLikedSongs() {
+        const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
+        const likedSongsList = document.getElementById('likedSongsList');
+
+        likedSongsList.innerHTML = '';
+
+        likedSongs.forEach((song, index) => {
+            const li = document.createElement('li');
+            li.textContent = song.title;
+            li.dataset.url = song.url;
+            li.addEventListener('click', () => playSongFromLiked(song.url, index, likedSongs));
+            likedSongsList.appendChild(li);
+        });
+    }
+
+    function playSongFromLiked(url, index, songs) {
+        audioPlayer.src = url;
+        audioPlayer.play();
+        playPauseIcon.className = 'fas fa-pause';
+
+        songTitle.textContent = `Playing: ${songs[index].title}`;
+        audioPlayer.onended = () => {
+            const nextIndex = (index + 1) % songs.length;
+            playSongFromLiked(songs[nextIndex].url, nextIndex, songs);
+        };
+    }
+
+    document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
         if (confirm('Are you sure you want to clear all liked songs?')) {
             localStorage.removeItem('likedSongs');
             fetchLikedSongs();
@@ -305,5 +320,6 @@
 
     fetchLikedSongs();
 </script>
+
 </body>
 </html>
