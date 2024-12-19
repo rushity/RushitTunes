@@ -55,6 +55,28 @@
         li:hover {
             color: #ff5722;
         }
+
+        .song-title {
+            margin: 10px 0;
+            font-size: 1.2em;
+            color: #ff9800;
+        }
+
+        .loading {
+            display: none;
+            color: #ff9800;
+        }
+
+        @media (max-width: 600px) {
+            audio {
+                width: 90%;
+            }
+
+            button {
+                padding: 8px;
+                font-size: 0.9em;
+            }
+        }
     </style>
 </head>
 <body>
@@ -66,8 +88,10 @@
             <input type="text" id="query" placeholder="Search for a song..." required>
             <button type="submit">Search</button>
         </form>
+        <p id="loading" class="loading">Searching...</p>
 
         <div id="playerContainer" class="player-container">
+            <p id="songTitle" class="song-title">No song playing</p>
             <audio id="audioPlayer" controls></audio>
             <button id="likeButton">Like</button>
         </div>
@@ -82,9 +106,14 @@
     <script>
         // Fetch the search form and handle search
         const form = document.getElementById('searchForm');
+        const loadingIndicator = document.getElementById('loading');
+        const songTitle = document.getElementById('songTitle');
+
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
             const query = document.getElementById('query').value;
+
+            loadingIndicator.style.display = 'block';
 
             try {
                 const response = await fetch('/search', {
@@ -95,6 +124,8 @@
 
                 const data = await response.json();
 
+                loadingIndicator.style.display = 'none';
+
                 if (data.error) {
                     alert(`Error: ${data.error}`);
                     return;
@@ -103,7 +134,10 @@
                 const audioPlayer = document.getElementById('audioPlayer');
                 audioPlayer.src = data.audio_url;
                 audioPlayer.play();
+
+                songTitle.textContent = query;
             } catch (error) {
+                loadingIndicator.style.display = 'none';
                 alert(`Failed to fetch song: ${error}`);
             }
         });
@@ -111,7 +145,6 @@
         // Like button functionality
         document.getElementById('likeButton').addEventListener('click', function () {
             const audioPlayer = document.getElementById('audioPlayer');
-            const songTitle = document.getElementById('query').value || 'Unknown Song';
             const songUrl = audioPlayer.src;
 
             if (!songUrl) {
@@ -119,6 +152,7 @@
                 return;
             }
 
+            const songTitleText = songTitle.textContent || 'Unknown Song';
             const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
 
             if (likedSongs.some(song => song.url === songUrl)) {
@@ -126,7 +160,7 @@
                 return;
             }
 
-            likedSongs.push({ title: songTitle, url: songUrl });
+            likedSongs.push({ title: songTitleText, url: songUrl });
             localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
 
             alert('Song liked successfully!');
@@ -154,6 +188,8 @@
             const audioPlayer = document.getElementById('audioPlayer');
             audioPlayer.src = url;
             audioPlayer.play();
+
+            songTitle.textContent = songs[index].title;
 
             audioPlayer.onended = () => {
                 const nextIndex = index + 1;
