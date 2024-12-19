@@ -23,11 +23,6 @@
             margin: 20px 0;
         }
 
-        audio {
-            width: 100%;
-            margin: 10px 0;
-        }
-
         button {
             padding: 10px;
             margin: 5px;
@@ -137,10 +132,6 @@
         }
 
         @media (max-width: 600px) {
-            audio {
-                width: 90%;
-            }
-
             button {
                 padding: 8px;
                 font-size: 0.9em;
@@ -168,7 +159,6 @@
 
         <div id="playerContainer" class="player-container">
             <p id="songTitle" class="song-title">No song playing</p>
-            <audio id="audioPlayer" controls></audio>
             <div class="progress-container">
                 <div class="progress-bar">
                     <div class="progress" id="progress"></div>
@@ -188,11 +178,10 @@
     </div>
 
     <script>
-        // Fetch the search form and handle search
         const form = document.getElementById('searchForm');
         const loadingIndicator = document.getElementById('loading');
         const songTitle = document.getElementById('songTitle');
-        const audioPlayer = document.getElementById('audioPlayer');
+        const audioPlayer = new Audio();
         const progressBar = document.getElementById('progress');
         const timeDisplay = document.getElementById('timeDisplay');
 
@@ -228,7 +217,6 @@
             }
         });
 
-        // Update progress bar and time display
         audioPlayer.addEventListener('timeupdate', function () {
             const currentTime = audioPlayer.currentTime;
             const duration = audioPlayer.duration || 0;
@@ -245,7 +233,6 @@
             timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
         });
 
-        // Like button functionality
         document.getElementById('likeButton').addEventListener('click', function () {
             const songUrl = audioPlayer.src;
 
@@ -269,7 +256,6 @@
             fetchLikedSongs();
         });
 
-        // Fetch and display liked songs
         function fetchLikedSongs() {
             const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
             const likedSongsList = document.getElementById('likedSongsList');
@@ -285,13 +271,11 @@
             });
         }
 
-        // Play liked song and auto-play the next
         function playSongFromLiked(url, index, songs) {
             audioPlayer.src = url;
             audioPlayer.play();
 
             songTitle.textContent = `Playing: ${songs[index].title}`;
-
             audioPlayer.onended = () => {
                 const nextIndex = index + 1;
                 if (nextIndex < songs.length) {
@@ -300,7 +284,6 @@
             };
         }
 
-        // Clear liked songs
         document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
             if (confirm('Are you sure you want to clear all liked songs?')) {
                 localStorage.removeItem('likedSongs');
@@ -309,7 +292,6 @@
             }
         });
 
-        // Load liked songs on page load
         fetchLikedSongs();
     </script>
 </body>
