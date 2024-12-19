@@ -186,12 +186,13 @@
     const songTitle = document.getElementById('songTitle');
     const audioPlayer = new Audio();
     const progressBar = document.getElementById('progress');
+    const progressContainer = document.querySelector('.progress-bar');
     const timeDisplay = document.getElementById('timeDisplay');
     const playPauseButton = document.getElementById('playPauseButton');
     const playPauseIcon = document.getElementById('playPauseIcon');
 
     form.addEventListener('submit', async function (event) {
-        event.preventDefault(); // Prevent page refresh
+        event.preventDefault();
         const query = document.getElementById('query').value.trim();
 
         if (!query) {
@@ -216,7 +217,6 @@
                 return;
             }
 
-            // Load the audio
             audioPlayer.src = data.audio_url;
             audioPlayer.play();
             playPauseIcon.className = 'fas fa-pause';
@@ -259,6 +259,17 @@
         };
 
         timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
+    });
+
+    progressContainer.addEventListener('click', function (event) {
+        const width = progressContainer.clientWidth;
+        const clickX = event.offsetX;
+        const duration = audioPlayer.duration || 0;
+
+        if (!isNaN(duration)) {
+            const newTime = (clickX / width) * duration;
+            audioPlayer.currentTime = newTime;
+        }
     });
 
     document.getElementById('likeButton').addEventListener('click', function () {
@@ -320,6 +331,7 @@
 
     fetchLikedSongs();
 </script>
+
 
 </body>
 </html>
