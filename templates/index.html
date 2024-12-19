@@ -54,6 +54,27 @@
             color: #4caf50 !important;
         }
 
+        .progress-bar-container {
+            position: relative;
+            margin-top: 10px;
+            width: 100%;
+            height: 8px;
+            background-color: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            width: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #ff9800, #ff5722);
+            transition: width 0.2s ease;
+        }
+
+        .progress-bar:hover {
+            cursor: pointer;
+        }
+
         button {
             padding: 10px;
             margin: 5px;
@@ -151,6 +172,9 @@
                     <i class="fas fa-heart"></i>
                 </button>
             </div>
+            <div class="progress-bar-container" id="progressBarContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
         </div>
 
         <div id="likedSongsContainer" class="player-container">
@@ -169,6 +193,8 @@
         const playPauseIcon = document.getElementById('playPauseIcon');
         const loopButton = document.getElementById('loopButton');
         const loopIcon = document.getElementById('loopIcon');
+        const progressBarContainer = document.getElementById('progressBarContainer');
+        const progressBar = document.getElementById('progressBar');
 
         let isLooping = false;
 
@@ -219,6 +245,16 @@
             isLooping = !isLooping;
             audioPlayer.loop = isLooping;
             loopIcon.classList.toggle('active', isLooping);
+        });
+
+        audioPlayer.addEventListener('timeupdate', () => {
+            const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100 || 0;
+            progressBar.style.width = `${progress}%`;
+        });
+
+        progressBarContainer.addEventListener('click', (e) => {
+            const clickPosition = e.offsetX / progressBarContainer.offsetWidth;
+            audioPlayer.currentTime = clickPosition * audioPlayer.duration;
         });
 
         function updatePlayPauseIcon(isPlaying) {
