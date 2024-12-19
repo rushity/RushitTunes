@@ -21,66 +21,11 @@
 
         .player-container {
             margin: 20px 0;
-            position: relative;
         }
 
         audio {
-            display: none;
-        }
-
-        .audio-controls {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 15px;
-            background-color: #1e1e1e;
-            padding: 15px;
-            border-radius: 10px;
-        }
-
-        .audio-button {
-            background: none;
-            border: none;
-            color: #ff9800;
-            font-size: 1.5em;
-            cursor: pointer;
-        }
-
-        .audio-button:hover {
-            color: #ff5722;
-        }
-
-        .active {
-            color: #4caf50 !important;
-        }
-
-        .progress-bar-container {
-            position: relative;
-            margin-top: 10px;
             width: 100%;
-            height: 8px;
-            background-color: #333;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .progress-bar {
-            width: 0;
-            height: 100%;
-            background: linear-gradient(90deg, #ff9800, #ff5722);
-            transition: width 0.2s ease;
-        }
-
-        .progress-bar:hover {
-            cursor: pointer;
-        }
-
-        .time-display {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9em;
-            color: #aaa;
-            margin-top: 5px;
+            margin: 10px 0;
         }
 
         button {
@@ -118,6 +63,10 @@
             color: #ff9800;
         }
 
+        .loading {
+            color: #ff9800;
+        }
+
         #query {
             padding: 10px;
             width: 80%;
@@ -145,10 +94,58 @@
             color: #ff5722;
         }
 
+        #clearLikedSongsButton {
+            padding: 10px 15px;
+            background-color: #ff9800;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            font-size: 1em;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        #clearLikedSongsButton:hover {
+            background-color: #ff5722;
+        }
+
+        .progress-container {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            flex: 1;
+            height: 5px;
+            background-color: #ff9800;
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .progress-bar span {
+            display: block;
+            height: 100%;
+            width: 0;
+            background-color: #ff5722;
+        }
+
+        .time {
+            color: #ff9800;
+            font-size: 0.9em;
+            margin: 0 10px;
+        }
+
         @media (max-width: 600px) {
-            .audio-controls {
-                flex-direction: column;
-                gap: 10px;
+            audio {
+                width: 90%;
+            }
+
+            button {
+                padding: 8px;
+                font-size: 0.9em;
             }
         }
     </style>
@@ -168,25 +165,17 @@
 
         <div id="playerContainer" class="player-container">
             <p id="songTitle" class="song-title">No song playing</p>
-            <audio id="audioPlayer"></audio>
-            <div class="audio-controls">
-                <button id="playPauseButton" class="audio-button">
-                    <i id="playPauseIcon" class="fas fa-play"></i>
-                </button>
-                <button id="loopButton" class="audio-button">
-                    <i id="loopIcon" class="fas fa-sync-alt"></i>
-                </button>
-                <button id="likeButton" class="heart-button" aria-label="Like">
-                    <i class="fas fa-heart"></i>
-                </button>
+            <audio id="audioPlayer" controls></audio>
+            <div class="progress-container">
+                <span id="currentTime" class="time">0:00</span>
+                <div class="progress-bar">
+                    <span id="progress"></span>
+                </div>
+                <span id="duration" class="time">0:00</span>
             </div>
-            <div class="progress-bar-container" id="progressBarContainer">
-                <div class="progress-bar" id="progressBar"></div>
-            </div>
-            <div class="time-display">
-                <span id="currentTime">0:00</span>
-                <span id="totalTime">0:00</span>
-            </div>
+            <button id="likeButton" class="heart-button" aria-label="Like">
+                <i class="fas fa-heart"></i>
+            </button>
         </div>
 
         <div id="likedSongsContainer" class="player-container">
@@ -197,20 +186,26 @@
     </div>
 
     <script>
+        // Function to update the play/pause button icon
+        function updatePlayPauseIcon(isPlaying) {
+            const playPauseIcon = document.getElementById('playPauseIcon');
+            if (isPlaying) {
+                playPauseIcon.classList.remove('fa-play');
+                playPauseIcon.classList.add('fa-pause');
+            } else {
+                playPauseIcon.classList.remove('fa-pause');
+                playPauseIcon.classList.add('fa-play');
+            }
+        }
+
+        // Fetch the search form and handle search
         const form = document.getElementById('searchForm');
         const loadingIndicator = document.getElementById('loading');
         const songTitle = document.getElementById('songTitle');
+        const progress = document.getElementById('progress');
+        const currentTimeElem = document.getElementById('currentTime');
+        const durationElem = document.getElementById('duration');
         const audioPlayer = document.getElementById('audioPlayer');
-        const playPauseButton = document.getElementById('playPauseButton');
-        const playPauseIcon = document.getElementById('playPauseIcon');
-        const loopButton = document.getElementById('loopButton');
-        const loopIcon = document.getElementById('loopIcon');
-        const progressBarContainer = document.getElementById('progressBarContainer');
-        const progressBar = document.getElementById('progressBar');
-        const currentTimeDisplay = document.getElementById('currentTime');
-        const totalTimeDisplay = document.getElementById('totalTime');
-
-        let isLooping = false;
 
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
@@ -235,7 +230,6 @@
 
                 audioPlayer.src = data.audio_url;
                 audioPlayer.play();
-                updatePlayPauseIcon(true);
 
                 songTitle.textContent = `Playing: ${query}`;
                 loadingIndicator.textContent = '';
@@ -245,55 +239,33 @@
             }
         });
 
-        playPauseButton.addEventListener('click', () => {
-            if (audioPlayer.paused) {
-                audioPlayer.play();
-                updatePlayPauseIcon(true);
-            } else {
-                audioPlayer.pause();
-                updatePlayPauseIcon(false);
+        // Like button functionality
+        document.getElementById('likeButton').addEventListener('click', function () {
+            const songUrl = audioPlayer.src;
+
+            if (!songUrl) {
+                alert('No song is currently playing!');
+                return;
             }
-        });
 
-        loopButton.addEventListener('click', () => {
-            isLooping = !isLooping;
-            audioPlayer.loop = isLooping;
-            loopIcon.classList.toggle('active', isLooping);
-        });
-
-        audioPlayer.addEventListener('timeupdate', () => {
-            const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100 || 0;
-            progressBar.style.width = `${progress}%`;
-
-            currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime);
-            totalTimeDisplay.textContent = formatTime(audioPlayer.duration);
-        });
-
-        progressBarContainer.addEventListener('click', (e) => {
-            const clickPosition = e.offsetX / progressBarContainer.offsetWidth;
-            audioPlayer.currentTime = clickPosition * audioPlayer.duration;
-        });
-
-        document.getElementById('likeButton').addEventListener('click', () => {
+            const songTitleText = songTitle.textContent.replace('Playing: ', '') || 'Unknown Song';
             const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-            const song = { title: songTitle.textContent, url: audioPlayer.src };
 
-            if (!likedSongs.some(s => s.url === song.url)) {
-                likedSongs.push(song);
-                localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
-                alert('Song liked successfully!');
-                fetchLikedSongs();
-            } else {
-                alert('Song is already liked!');
+            if (likedSongs.some(song => song.url === songUrl)) {
+                alert('This song is already liked!');
+                return;
             }
+
+            likedSongs.push({ title: songTitleText, url: songUrl });
+            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+
+            alert('Song liked successfully!');
+            fetchLikedSongs();
         });
 
-        function formatTime(seconds) {
-            if (isNaN(seconds)) return "0:00";
-            const mins = Math.floor(seconds / 60);
-            const secs = Math.floor(seconds % 60);
-            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-        }
-    </script>
-</body>
-</html>
+        // Fetch and display liked songs
+        function fetchLikedSongs() {
+            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
+            const likedSongsList = document.getElementById('likedSongsList');
+
+            likedSongsList.innerHTML = '';
