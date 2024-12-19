@@ -75,6 +75,14 @@
             cursor: pointer;
         }
 
+        .time-display {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9em;
+            color: #aaa;
+            margin-top: 5px;
+        }
+
         button {
             padding: 10px;
             margin: 5px;
@@ -175,6 +183,10 @@
             <div class="progress-bar-container" id="progressBarContainer">
                 <div class="progress-bar" id="progressBar"></div>
             </div>
+            <div class="time-display">
+                <span id="currentTime">0:00</span>
+                <span id="totalTime">0:00</span>
+            </div>
         </div>
 
         <div id="likedSongsContainer" class="player-container">
@@ -195,6 +207,8 @@
         const loopIcon = document.getElementById('loopIcon');
         const progressBarContainer = document.getElementById('progressBarContainer');
         const progressBar = document.getElementById('progressBar');
+        const currentTimeDisplay = document.getElementById('currentTime');
+        const totalTimeDisplay = document.getElementById('totalTime');
 
         let isLooping = false;
 
@@ -250,6 +264,9 @@
         audioPlayer.addEventListener('timeupdate', () => {
             const progress = (audioPlayer.currentTime / audioPlayer.duration) * 100 || 0;
             progressBar.style.width = `${progress}%`;
+
+            currentTimeDisplay.textContent = formatTime(audioPlayer.currentTime);
+            totalTimeDisplay.textContent = formatTime(audioPlayer.duration);
         });
 
         progressBarContainer.addEventListener('click', (e) => {
@@ -257,9 +274,25 @@
             audioPlayer.currentTime = clickPosition * audioPlayer.duration;
         });
 
-        function updatePlayPauseIcon(isPlaying) {
-            playPauseIcon.classList.toggle('fa-play', !isPlaying);
-            playPauseIcon.classList.toggle('fa-pause', isPlaying);
+        document.getElementById('likeButton').addEventListener('click', () => {
+            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
+            const song = { title: songTitle.textContent, url: audioPlayer.src };
+
+            if (!likedSongs.some(s => s.url === song.url)) {
+                likedSongs.push(song);
+                localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+                alert('Song liked successfully!');
+                fetchLikedSongs();
+            } else {
+                alert('Song is already liked!');
+            }
+        });
+
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return "0:00";
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
         }
     </script>
 </body>
