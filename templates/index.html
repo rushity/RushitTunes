@@ -6,7 +6,7 @@
     <title>RushitTunes</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
-        /* Basic styles */
+        /* General Styles */
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
@@ -18,10 +18,6 @@
 
         .container {
             padding: 20px;
-        }
-
-        .player-container {
-            margin: 20px 0;
         }
 
         button {
@@ -53,19 +49,6 @@
             color: #ff5722;
         }
 
-        .download-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #ff9800;
-            font-size: 1.5em;
-            margin-left: 10px;
-        }
-
-        .download-button:hover {
-            color: #ff5722;
-        }
-
         .progress-bar {
             width: 80%;
             height: 5px;
@@ -85,6 +68,26 @@
             font-size: 1.2em;
             color: #ff9800;
         }
+
+        /* Search Form Styles */
+        #searchForm input {
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ff9800;
+            width: 70%;
+            margin-right: 10px;
+        }
+
+        #searchForm button {
+            font-size: 16px;
+        }
+
+        /* Download Section */
+        #downloadStatus {
+            margin: 10px;
+            font-size: 0.9em;
+            color: #ff9800;
+        }
     </style>
 </head>
 <body>
@@ -101,21 +104,27 @@
         </form>
 
         <!-- Player Section -->
-        <div id="playerContainer" class="player-container">
+        <div id="playerContainer">
             <p id="songTitle" class="song-title">No song playing</p>
-            <button id="playPauseButton" class="play-pause-button" aria-label="Play/Pause">
-                <i id="playPauseIcon" class="fas fa-play"></i>
+            <audio id="audioPlayer" controls></audio>
+            <p id="duration">Duration: <span id="durationValue">0:00</span></p>
+            <button id="likeButton" class="like-button" aria-label="Like">
+                <i id="likeIcon" class="far fa-heart"></i>
             </button>
-            <div class="progress-bar">
-                <div class="progress" id="progress"></div>
-            </div>
             <button id="downloadButton" class="download-button" aria-label="Download">
                 <i class="fas fa-download"></i>
             </button>
+            <p id="downloadStatus">No downloads in progress</p>
+        </div>
+
+        <!-- Liked Songs Section -->
+        <div>
+            <h2>Liked Songs</h2>
+            <ul id="likedSongsList"></ul>
         </div>
 
         <!-- Downloaded Songs Section -->
-        <div id="downloadedSongsContainer" class="player-container">
+        <div>
             <h2>Downloaded Songs</h2>
             <ul id="downloadedSongsList"></ul>
         </div>
@@ -124,12 +133,16 @@
     <script>
         const form = document.getElementById('searchForm');
         const songTitle = document.getElementById('songTitle');
-        const audioPlayer = new Audio();
-        const progressBar = document.getElementById('progress');
-        const playPauseButton = document.getElementById('playPauseButton');
-        const playPauseIcon = document.getElementById('playPauseIcon');
+        const audioPlayer = document.getElementById('audioPlayer');
+        const likeButton = document.getElementById('likeButton');
+        const likeIcon = document.getElementById('likeIcon');
         const downloadButton = document.getElementById('downloadButton');
+        const likedSongsList = document.getElementById('likedSongsList');
         const downloadedSongsList = document.getElementById('downloadedSongsList');
+        const downloadStatus = document.getElementById('downloadStatus');
+        const durationValue = document.getElementById('durationValue');
+
+        let currentSong = null;
 
         // Handle Search
         form.addEventListener('submit', async (event) => {
@@ -151,21 +164,21 @@
 
                 audioPlayer.src = data.audio_url;
                 audioPlayer.play();
-                playPauseIcon.className = 'fas fa-pause';
-                songTitle.textContent = `Playing: ${query}`;
+                songTitle.textContent = query;
+                currentSong = query;
             } catch (error) {
                 alert(`Error: ${error}`);
             }
         });
 
-        // Handle Play/Pause
-        playPauseButton.addEventListener('click', () => {
-            if (audioPlayer.paused) {
-                audioPlayer.play();
-                playPauseIcon.className = 'fas fa-pause';
-            } else {
-                audioPlayer.pause();
-                playPauseIcon.className = 'fas fa-play';
+        // Handle Like Button
+        likeButton.addEventListener('click', () => {
+            if (currentSong) {
+                const li = document.createElement('li');
+                li.textContent = currentSong;
+                likedSongsList.appendChild(li);
+
+                likeIcon.className = 'fas fa-heart';
             }
         });
 
@@ -176,17 +189,20 @@
                 return;
             }
 
+            downloadStatus.textContent = 'Downloading...';
+
             const response = await fetch(audioPlayer.src);
             const blob = await response.blob();
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            link.download = `${songTitle.textContent.replace('Playing: ', '')}.mp3`;
+            link.download = `${songTitle.textContent}.mp3`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
 
-            addDownloadedSong(songTitle.textContent.replace('Playing: ', ''), url);
+            downloadStatus.textContent = 'Download completed!';
+            addDownloadedSong(songTitle.textContent, url);
         });
 
         // Add Downloaded Song
@@ -198,21 +214,22 @@
             li.addEventListener('click', () => {
                 audioPlayer.src = url;
                 audioPlayer.play();
-                playPauseIcon.className = 'fas fa-pause';
-                songTitle.textContent = `Playing: ${title}`;
+                songTitle.textContent = title;
             });
 
             downloadedSongsList.appendChild(li);
         }
 
-        // Auto-play next downloaded song
+        // Display Song Duration
+        audioPlayer.addEventListener('loadedmetadata', () => {
+            const minutes = Math.floor(audioPlayer.duration / 60);
+            const seconds = Math.floor(audioPlayer.duration % 60);
+            durationValue.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        });
+
+        // Update Download Status
         audioPlayer.addEventListener('ended', () => {
-            const songs = Array.from(downloadedSongsList.children);
-            const currentIndex = songs.findIndex(song => song.dataset.url === audioPlayer.src);
-            if (currentIndex !== -1) {
-                const nextIndex = (currentIndex + 1) % songs.length;
-                songs[nextIndex].click();
-            }
+            downloadStatus.textContent = 'No downloads in progress';
         });
     </script>
 </body>
