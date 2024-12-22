@@ -6,7 +6,6 @@
     <title>RushitTunes</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
-        /* Basic styles for the page */
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
@@ -38,25 +37,23 @@
             background-color: #ff5722;
         }
 
-        ul {
-            list-style: none;
-            padding: 0;
-        }
-
-        li {
-            margin: 5px 0;
+        .download-button {
+            padding: 10px;
+            background-color: #ff9800;
+            color: #fff;
+            border: none;
+            border-radius: 50%;
             cursor: pointer;
-            color: #ff9800;
+            font-size: 1.5em;
+            display: inline-block;
         }
 
-        li:hover {
-            color: #ff5722;
+        .download-button:hover {
+            background-color: #ff5722;
         }
 
-        .song-title {
-            margin: 10px 0;
-            font-size: 1.2em;
-            color: #ff9800;
+        .download-button i {
+            margin: 0;
         }
 
         .loading {
@@ -78,7 +75,7 @@
             border-color: #ff5722;
         }
 
-        #searchButton, .heart-button, .play-pause-button {
+        #searchButton {
             background: none;
             border: none;
             cursor: pointer;
@@ -86,23 +83,8 @@
             font-size: 1.5em;
         }
 
-        #searchButton:hover, .heart-button:hover, .play-pause-button:hover {
+        #searchButton:hover {
             color: #ff5722;
-        }
-
-        #clearLikedSongsButton {
-            padding: 10px 15px;
-            background-color: #ff9800;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            font-size: 1em;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        #clearLikedSongsButton:hover {
-            background-color: #ff5722;
         }
 
         .progress-container {
@@ -132,16 +114,22 @@
             font-size: 0.9em;
         }
 
-        @media (max-width: 600px) {
-            button {
-                padding: 8px;
-                font-size: 0.9em;
-            }
+        .download-progress {
+            margin-top: 20px;
+            width: 80%;
+            background-color: #555;
+            height: 10px;
+            margin: 0 auto;
+        }
 
-            .progress-container {
-                flex-direction: column;
-                align-items: flex-start;
-            }
+        .download-progress-bar {
+            height: 100%;
+            background-color: #ff9800;
+            width: 0;
+        }
+
+        .download-status {
+            color: #ff9800;
         }
     </style>
 </head>
@@ -169,16 +157,15 @@
                 </div>
                 <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
             </div>
-            <button id="likeButton" class="heart-button" aria-label="Like">
-                <i class="fas fa-heart"></i>
+            <button id="downloadButton" class="download-button" title="Download">
+                <i class="fas fa-download"></i>
             </button>
         </div>
 
-        <div id="likedSongsContainer" class="player-container">
-            <h2>Liked Songs</h2>
-            <ul id="likedSongsList"></ul>
-            <button id="clearLikedSongsButton">Clear Liked Songs</button>
+        <div class="download-progress" id="downloadProgressContainer">
+            <div class="download-progress-bar" id="downloadProgress"></div>
         </div>
+        <p id="downloadStatus" class="download-status"></p>
     </div>
 
     <script>
@@ -191,10 +178,14 @@
         const timeDisplay = document.getElementById('timeDisplay');
         const playPauseButton = document.getElementById('playPauseButton');
         const playPauseIcon = document.getElementById('playPauseIcon');
+        const downloadButton = document.getElementById('downloadButton');
+        const downloadProgressBar = document.getElementById('downloadProgress');
+        const downloadStatus = document.getElementById('downloadStatus');
+        let songTitleText = '';
+        let downloadInProgress = false;
 
-        // Handle form submission
         form.addEventListener('submit', async function (event) {
-            event.preventDefault();  // Prevent form reload
+            event.preventDefault();
             const query = document.getElementById('query').value.trim();
 
             if (!query) {
@@ -220,9 +211,10 @@
                 }
 
                 audioPlayer.src = data.audio_url;
+                songTitleText = data.song_title;
                 audioPlayer.play();
                 playPauseIcon.className = 'fas fa-pause';
-                songTitle.textContent = `Playing: ${query}`;
+                songTitle.textContent = `Playing: ${songTitleText}`;
                 loadingIndicator.textContent = '';
             } catch (error) {
                 loadingIndicator.textContent = 'Error occurred during search';
@@ -230,7 +222,6 @@
             }
         });
 
-        // Play/Pause button functionality
         playPauseButton.addEventListener('click', function () {
             if (!audioPlayer.src) {
                 alert('No song is loaded. Please search for a song first.');
@@ -246,7 +237,52 @@
             }
         });
 
-        // Update progress bar and time display
+        downloadButton.addEventListener('click', async function () {
+            if (!audioPlayer.src) {
+                alert('No song is currently playing!');
+                return;
+            }
+
+            if (downloadInProgress) {
+                alert('Download already in progress.');
+                return;
+            }
+
+            downloadInProgress = true;
+            downloadStatus.textContent = 'Downloading...';
+            downloadProgressBar.style.width = '0%';
+
+            const query = songTitleText;
+            const response = await fetch('/start-download', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query })
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                alert('Error starting download');
+                downloadStatus.textContent = 'Error downloading.';
+                return;
+            }
+
+            const interval = setInterval(async () => {
+                const progressResponse = await fetch('/download-progress');
+                const progressData = await progressResponse.json();
+                const progress = progressData.progress;
+
+                downloadProgressBar.style.width = `${progress}%`;
+
+                if (progress >= 100) {
+                    clearInterval(interval);
+                    downloadStatus.textContent = 'Download Complete!';
+                    downloadInProgress = false;
+                    alert('Download complete!');
+                }
+            }, 1000);
+        });
+
         audioPlayer.addEventListener('timeupdate', function () {
             const currentTime = audioPlayer.currentTime || 0;
             const duration = audioPlayer.duration || 0;
@@ -265,7 +301,6 @@
             timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
         });
 
-        // Allow users to click the progress bar to change the current time
         progressContainer.addEventListener('click', function (event) {
             const width = progressContainer.clientWidth;
             const clickX = event.offsetX;
@@ -276,69 +311,6 @@
                 audioPlayer.currentTime = newTime;
             }
         });
-
-        // Handle "like" button
-        document.getElementById('likeButton').addEventListener('click', function () {
-            const songUrl = audioPlayer.src;
-
-            if (!songUrl) {
-                alert('No song is currently playing!');
-                return;
-            }
-
-            const songTitleText = songTitle.textContent.replace('Playing: ', '') || 'Unknown Song';
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-
-            if (likedSongs.some(song => song.url === songUrl)) {
-                alert('This song is already liked!');
-                return;
-            }
-
-            likedSongs.push({ title: songTitleText, url: songUrl });
-            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
-            fetchLikedSongs();
-            alert('Song liked successfully!');
-        });
-
-        // Display the liked songs from localStorage
-        function fetchLikedSongs() {
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-            const likedSongsList = document.getElementById('likedSongsList');
-
-            likedSongsList.innerHTML = '';
-
-            likedSongs.forEach((song, index) => {
-                const li = document.createElement('li');
-                li.textContent = song.title;
-                li.dataset.url = song.url;
-                li.addEventListener('click', () => playSongFromLiked(song.url, index, likedSongs));
-                likedSongsList.appendChild(li);
-            });
-        }
-
-        // Play a liked song
-        function playSongFromLiked(url, index, songs) {
-            audioPlayer.src = url;
-            audioPlayer.play();
-            playPauseIcon.className = 'fas fa-pause';
-
-            songTitle.textContent = `Playing: ${songs[index].title}`;
-            audioPlayer.onended = () => {
-                const nextIndex = (index + 1) % songs.length;
-                playSongFromLiked(songs[nextIndex].url, nextIndex, songs);
-            };
-        }
-
-        // Clear liked songs
-        document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
-            if (confirm('Are you sure you want to clear all liked songs?')) {
-                localStorage.removeItem('likedSongs');
-                fetchLikedSongs();
-                alert('Liked songs cleared!');
-            }
-        });
-
-        fetchLikedSongs();
     </script>
 </body>
 </html>
