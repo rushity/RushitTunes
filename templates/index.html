@@ -185,141 +185,157 @@
      
     </div>
 
-    <script>
-        const form = document.getElementById('searchForm');
-        const loadingIndicator = document.getElementById('loading');
-        const songTitle = document.getElementById('songTitle');
-        const audioPlayer = new Audio();
-        const progressBar = document.getElementById('progress');
-        const progressContainer = document.querySelector('.progress-bar');
-        const timeDisplay = document.getElementById('timeDisplay');
-        const playPauseButton = document.getElementById('playPauseButton');
-        const playPauseIcon = document.getElementById('playPauseIcon');
-        const downloadIcon = document.getElementById('downloadIcon');
-        const downloadedSongsList = document.getElementById('downloadedSongsList');
-        const likeButton = document.getElementById('likeButton');
+   <script>
+    const form = document.getElementById('searchForm');
+    const loadingIndicator = document.getElementById('loading');
+    const songTitle = document.getElementById('songTitle');
+    const audioPlayer = new Audio();
+    const progressBar = document.getElementById('progress');
+    const progressContainer = document.querySelector('.progress-bar');
+    const timeDisplay = document.getElementById('timeDisplay');
+    const playPauseButton = document.getElementById('playPauseButton');
+    const playPauseIcon = document.getElementById('playPauseIcon');
+
+    form.addEventListener('submit', async function (event) {
+        event.preventDefault();
+        const query = document.getElementById('query').value.trim();
+
+        if (!query) {
+            alert('Please enter a valid search term.');
+            return;
+        }
+
+        loadingIndicator.textContent = Searching for "${query}"...;
+
+        try {
+            const response = await fetch('/search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query }),
+            });
+
+            const data = await response.json();
+
+            if (data.error) {
+                loadingIndicator.textContent = 'Error occurred during search';
+                alert(Error: ${data.error});
+                return;
+            }
+
+            audioPlayer.src = data.audio_url;
+            audioPlayer.play();
+            playPauseIcon.className = 'fas fa-pause';
+            songTitle.textContent = Playing: ${query};
+            loadingIndicator.textContent = '';
+        } catch (error) {
+            loadingIndicator.textContent = 'Error occurred during search';
+            alert(Failed to fetch song: ${error});
+        }
+    });
+
+    playPauseButton.addEventListener('click', function () {
+        if (!audioPlayer.src) {
+            alert('No song is loaded. Please search for a song first.');
+            return;
+        }
+
+        if (audioPlayer.paused) {
+            audioPlayer.play();
+            playPauseIcon.className = 'fas fa-pause';
+        } else {
+            audioPlayer.pause();
+            playPauseIcon.className = 'fas fa-play';
+        }
+    });
+
+    audioPlayer.addEventListener('timeupdate', function () {
+        const currentTime = audioPlayer.currentTime || 0;
+        const duration = audioPlayer.duration || 0;
+
+        if (!isNaN(duration)) {
+            const progressPercent = (currentTime / duration) * 100;
+            progressBar.style.width = progressPercent + '%';
+        }
+
+        const formatTime = time => {
+            const minutes = Math.floor(time / 60);
+            const seconds = Math.floor(time % 60).toString().padStart(2, '0');
+            return ${minutes}:${seconds};
+        };
+
+        timeDisplay.textContent = ${formatTime(currentTime)} / ${formatTime(duration)};
+    });
+
+    progressContainer.addEventListener('click', function (event) {
+        const width = progressContainer.clientWidth;
+        const clickX = event.offsetX;
+        const duration = audioPlayer.duration || 0;
+
+        if (!isNaN(duration)) {
+            const newTime = (clickX / width) * duration;
+            audioPlayer.currentTime = newTime;
+        }
+    });
+
+    document.getElementById('likeButton').addEventListener('click', function () {
+        const songUrl = audioPlayer.src;
+
+        if (!songUrl) {
+            alert('No song is currently playing!');
+            return;
+        }
+
+        const songTitleText = songTitle.textContent.replace('Playing: ', '') || 'Unknown Song';
+        const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
+
+        if (likedSongs.some(song => song.url === songUrl)) {
+            alert('This song is already liked!');
+            return;
+        }
+
+        likedSongs.push({ title: songTitleText, url: songUrl });
+        localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+        fetchLikedSongs();
+        alert('Song liked successfully!');
+    });
+
+    function fetchLikedSongs() {
+        const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
         const likedSongsList = document.getElementById('likedSongsList');
 
-        // Handle form submission
-        form.addEventListener('submit', async function (event) {
-            event.preventDefault();  // Prevent form reload
-            const query = document.getElementById('query').value.trim();
+        likedSongsList.innerHTML = '';
 
-            if (!query) {
-                alert('Please enter a valid search term.');
-                return;
-            }
-
-            loadingIndicator.textContent = `Searching for "${query}"...`;
-
-            try {
-                const response = await fetch('/search', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query }),
-                });
-
-                const data = await response.json();
-
-                if (data.error) {
-                    loadingIndicator.textContent = 'Error occurred during search';
-                    alert(`Error: ${data.error}`);
-                    return;
-                }
-
-                audioPlayer.src = data.audio_url;
-                audioPlayer.play();
-                playPauseIcon.className = 'fas fa-pause';
-                songTitle.textContent = `Playing: ${query}`;
-                loadingIndicator.textContent = '';
-            } catch (error) {
-                loadingIndicator.textContent = 'Error occurred during search';
-                alert(`Failed to fetch song: ${error}`);
-            }
+        likedSongs.forEach((song, index) => {
+            const li = document.createElement('li');
+            li.textContent = song.title;
+            li.dataset.url = song.url;
+            li.addEventListener('click', () => playSongFromLiked(song.url, index, likedSongs));
+            likedSongsList.appendChild(li);
         });
+    }
 
-        // Play/Pause button functionality
-        playPauseButton.addEventListener('click', function () {
-            if (!audioPlayer.src) {
-                alert('No song is loaded. Please search for a song first.');
-                return;
-            }
+    function playSongFromLiked(url, index, songs) {
+        audioPlayer.src = url;
+        audioPlayer.play();
+        playPauseIcon.className = 'fas fa-pause';
 
-            if (audioPlayer.paused) {
-                audioPlayer.play();
-                playPauseIcon.className = 'fas fa-pause';
-            } else {
-                audioPlayer.pause();
-                playPauseIcon.className = 'fas fa-play';
-            }
-        });
+        songTitle.textContent = Playing: ${songs[index].title};
+        audioPlayer.onended = () => {
+            const nextIndex = (index + 1) % songs.length;
+            playSongFromLiked(songs[nextIndex].url, nextIndex, songs);
+        };
+    }
 
-        // Update progress bar and time display
-        audioPlayer.addEventListener('timeupdate', function () {
-            const currentTime = audioPlayer.currentTime || 0;
-            const duration = audioPlayer.duration || 0;
-
-            if (!isNaN(duration)) {
-                const progressPercent = (currentTime / duration) * 100;
-                progressBar.style.width = progressPercent + '%';
-            }
-
-            const formatTime = (time) => {
-                const minutes = Math.floor(time / 60);
-                const seconds = Math.floor(time % 60);
-                return `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
-            };
-
-            timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
-        });
-
-        // Like button functionality
-        likeButton.addEventListener('click', function () {
-            const songName = songTitle.textContent;
-
-            if (!songName || songName === 'No song playing') {
-                alert('No song is currently playing');
-                return;
-            }
-
-            let likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-            if (!likedSongs.includes(songName)) {
-                likedSongs.push(songName);
-                localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
-                alert(`${songName} has been liked!`);
-                updateLikedSongsList();
-            }
-        });
-
-        // Download button functionality
-       
-
-        // Update the liked songs list from local storage
-        function updateLikedSongsList() {
-            likedSongsList.innerHTML = '';
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-            likedSongs.forEach(song => {
-                const listItem = document.createElement('li');
-                listItem.textContent = song;
-                likedSongsList.appendChild(listItem);
-            });
-        }
-
-        // Add downloaded song to the list
-        function addDownloadedSong(songName, songUrl) {
-            const listItem = document.createElement('li');
-            listItem.textContent = songName;
-            downloadedSongsList.appendChild(listItem);
-        }
-
-        // Clear liked songs from local storage
-        document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
+    document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
+        if (confirm('Are you sure you want to clear all liked songs?')) {
             localStorage.removeItem('likedSongs');
-            updateLikedSongsList();
-        });
+            fetchLikedSongs();
+            alert('Liked songs cleared!');
+        }
+    });
 
-        // Initialize the liked songs list
-        updateLikedSongsList();
-    </script>
+    fetchLikedSongs();
+</script>
+
 </body>
 </html>
