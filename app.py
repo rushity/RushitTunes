@@ -1,4 +1,4 @@
-app.py "from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify
 import yt_dlp
 
 app = Flask(__name__)
