@@ -6,7 +6,7 @@
     <title>RushitTunes</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
     <style>
-        /* Basic styles for the page */
+        /* Basic styles */
         body {
             font-family: Arial, sans-serif;
             background-color: #121212;
@@ -53,70 +53,24 @@
             color: #ff5722;
         }
 
-        .song-title {
-            margin: 10px 0;
-            font-size: 1.2em;
-            color: #ff9800;
-        }
-
-        .loading {
-            color: #ff9800;
-        }
-
-        #query {
-            padding: 10px;
-            width: 80%;
-            font-size: 1em;
-            border: 2px solid #ff9800;
-            border-radius: 5px;
-            background-color: #1e1e1e;
-            color: #fff;
-        }
-
-        #query:focus {
-            outline: none;
-            border-color: #ff5722;
-        }
-
-        #searchButton, .heart-button, .play-pause-button {
+        .download-button {
             background: none;
             border: none;
             cursor: pointer;
             color: #ff9800;
             font-size: 1.5em;
+            margin-left: 10px;
         }
 
-        #searchButton:hover, .heart-button:hover, .play-pause-button:hover {
+        .download-button:hover {
             color: #ff5722;
-        }
-
-        #clearLikedSongsButton {
-            padding: 10px 15px;
-            background-color: #ff9800;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            font-size: 1em;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        #clearLikedSongsButton:hover {
-            background-color: #ff5722;
-        }
-
-        .progress-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 10px 0;
         }
 
         .progress-bar {
             width: 80%;
             height: 5px;
             background-color: #ff9800;
-            border-radius: 5px;
+            margin: 10px auto;
             position: relative;
         }
 
@@ -124,24 +78,12 @@
             height: 100%;
             background-color: #ff5722;
             width: 0;
-            border-radius: 5px;
         }
 
-        .time-display {
-            margin-left: 10px;
-            font-size: 0.9em;
-        }
-
-        @media (max-width: 600px) {
-            button {
-                padding: 8px;
-                font-size: 0.9em;
-            }
-
-            .progress-container {
-                flex-direction: column;
-                align-items: flex-start;
-            }
+        .song-title {
+            margin: 10px 0;
+            font-size: 1.2em;
+            color: #ff9800;
         }
     </style>
 </head>
@@ -150,59 +92,49 @@
         <h1>RushitTunes</h1>
         <p>Your personal music streaming platform</p>
 
-        <form id="searchForm" class="search-form">
+        <!-- Search Form -->
+        <form id="searchForm">
             <input type="text" id="query" placeholder="Search for a song..." required>
             <button id="searchButton" type="submit" aria-label="Search">
                 <i class="fas fa-search"></i>
             </button>
         </form>
-        <p id="loading" class="loading">Ready to search</p>
 
+        <!-- Player Section -->
         <div id="playerContainer" class="player-container">
             <p id="songTitle" class="song-title">No song playing</p>
             <button id="playPauseButton" class="play-pause-button" aria-label="Play/Pause">
                 <i id="playPauseIcon" class="fas fa-play"></i>
             </button>
-            <div class="progress-container">
-                <div class="progress-bar">
-                    <div class="progress" id="progress"></div>
-                </div>
-                <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
+            <div class="progress-bar">
+                <div class="progress" id="progress"></div>
             </div>
-            <button id="likeButton" class="heart-button" aria-label="Like">
-                <i class="fas fa-heart"></i>
+            <button id="downloadButton" class="download-button" aria-label="Download">
+                <i class="fas fa-download"></i>
             </button>
         </div>
 
-        <div id="likedSongsContainer" class="player-container">
-            <h2>Liked Songs</h2>
-            <ul id="likedSongsList"></ul>
-            <button id="clearLikedSongsButton">Clear Liked Songs</button>
+        <!-- Downloaded Songs Section -->
+        <div id="downloadedSongsContainer" class="player-container">
+            <h2>Downloaded Songs</h2>
+            <ul id="downloadedSongsList"></ul>
         </div>
     </div>
 
     <script>
         const form = document.getElementById('searchForm');
-        const loadingIndicator = document.getElementById('loading');
         const songTitle = document.getElementById('songTitle');
         const audioPlayer = new Audio();
         const progressBar = document.getElementById('progress');
-        const progressContainer = document.querySelector('.progress-bar');
-        const timeDisplay = document.getElementById('timeDisplay');
         const playPauseButton = document.getElementById('playPauseButton');
         const playPauseIcon = document.getElementById('playPauseIcon');
+        const downloadButton = document.getElementById('downloadButton');
+        const downloadedSongsList = document.getElementById('downloadedSongsList');
 
-        // Handle form submission
-        form.addEventListener('submit', async function (event) {
-            event.preventDefault();  // Prevent form reload
+        // Handle Search
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
             const query = document.getElementById('query').value.trim();
-
-            if (!query) {
-                alert('Please enter a valid search term.');
-                return;
-            }
-
-            loadingIndicator.textContent = `Searching for "${query}"...`;
 
             try {
                 const response = await fetch('/search', {
@@ -212,9 +144,7 @@
                 });
 
                 const data = await response.json();
-
                 if (data.error) {
-                    loadingIndicator.textContent = 'Error occurred during search';
                     alert(`Error: ${data.error}`);
                     return;
                 }
@@ -223,20 +153,13 @@
                 audioPlayer.play();
                 playPauseIcon.className = 'fas fa-pause';
                 songTitle.textContent = `Playing: ${query}`;
-                loadingIndicator.textContent = '';
             } catch (error) {
-                loadingIndicator.textContent = 'Error occurred during search';
-                alert(`Failed to fetch song: ${error}`);
+                alert(`Error: ${error}`);
             }
         });
 
-        // Play/Pause button functionality
-        playPauseButton.addEventListener('click', function () {
-            if (!audioPlayer.src) {
-                alert('No song is loaded. Please search for a song first.');
-                return;
-            }
-
+        // Handle Play/Pause
+        playPauseButton.addEventListener('click', () => {
             if (audioPlayer.paused) {
                 audioPlayer.play();
                 playPauseIcon.className = 'fas fa-pause';
@@ -246,99 +169,51 @@
             }
         });
 
-        // Update progress bar and time display
-        audioPlayer.addEventListener('timeupdate', function () {
-            const currentTime = audioPlayer.currentTime || 0;
-            const duration = audioPlayer.duration || 0;
-
-            if (!isNaN(duration)) {
-                const progressPercent = (currentTime / duration) * 100;
-                progressBar.style.width = progressPercent + '%';
-            }
-
-            const formatTime = time => {
-                const minutes = Math.floor(time / 60);
-                const seconds = Math.floor(time % 60).toString().padStart(2, '0');
-                return `${minutes}:${seconds}`;
-            };
-
-            timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
-        });
-
-        // Allow users to click the progress bar to change the current time
-        progressContainer.addEventListener('click', function (event) {
-            const width = progressContainer.clientWidth;
-            const clickX = event.offsetX;
-            const duration = audioPlayer.duration || 0;
-
-            if (!isNaN(duration)) {
-                const newTime = (clickX / width) * duration;
-                audioPlayer.currentTime = newTime;
-            }
-        });
-
-        // Handle "like" button
-        document.getElementById('likeButton').addEventListener('click', function () {
-            const songUrl = audioPlayer.src;
-
-            if (!songUrl) {
-                alert('No song is currently playing!');
+        // Handle Download
+        downloadButton.addEventListener('click', async () => {
+            if (!audioPlayer.src) {
+                alert('No song loaded!');
                 return;
             }
 
-            const songTitleText = songTitle.textContent.replace('Playing: ', '') || 'Unknown Song';
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
+            const response = await fetch(audioPlayer.src);
+            const blob = await response.blob();
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${songTitle.textContent.replace('Playing: ', '')}.mp3`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
 
-            if (likedSongs.some(song => song.url === songUrl)) {
-                alert('This song is already liked!');
-                return;
-            }
-
-            likedSongs.push({ title: songTitleText, url: songUrl });
-            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
-            fetchLikedSongs();
-            alert('Song liked successfully!');
+            addDownloadedSong(songTitle.textContent.replace('Playing: ', ''), url);
         });
 
-        // Display the liked songs from localStorage
-        function fetchLikedSongs() {
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-            const likedSongsList = document.getElementById('likedSongsList');
+        // Add Downloaded Song
+        function addDownloadedSong(title, url) {
+            const li = document.createElement('li');
+            li.textContent = title;
+            li.dataset.url = url;
 
-            likedSongsList.innerHTML = '';
-
-            likedSongs.forEach((song, index) => {
-                const li = document.createElement('li');
-                li.textContent = song.title;
-                li.dataset.url = song.url;
-                li.addEventListener('click', () => playSongFromLiked(song.url, index, likedSongs));
-                likedSongsList.appendChild(li);
+            li.addEventListener('click', () => {
+                audioPlayer.src = url;
+                audioPlayer.play();
+                playPauseIcon.className = 'fas fa-pause';
+                songTitle.textContent = `Playing: ${title}`;
             });
+
+            downloadedSongsList.appendChild(li);
         }
 
-        // Play a liked song
-        function playSongFromLiked(url, index, songs) {
-            audioPlayer.src = url;
-            audioPlayer.play();
-            playPauseIcon.className = 'fas fa-pause';
-
-            songTitle.textContent = `Playing: ${songs[index].title}`;
-            audioPlayer.onended = () => {
-                const nextIndex = (index + 1) % songs.length;
-                playSongFromLiked(songs[nextIndex].url, nextIndex, songs);
-            };
-        }
-
-        // Clear liked songs
-        document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
-            if (confirm('Are you sure you want to clear all liked songs?')) {
-                localStorage.removeItem('likedSongs');
-                fetchLikedSongs();
-                alert('Liked songs cleared!');
+        // Auto-play next downloaded song
+        audioPlayer.addEventListener('ended', () => {
+            const songs = Array.from(downloadedSongsList.children);
+            const currentIndex = songs.findIndex(song => song.dataset.url === audioPlayer.src);
+            if (currentIndex !== -1) {
+                const nextIndex = (currentIndex + 1) % songs.length;
+                songs[nextIndex].click();
             }
         });
-
-        fetchLikedSongs();
     </script>
 </body>
 </html>
