@@ -172,9 +172,7 @@
             <button id="likeButton" class="heart-button" aria-label="Like">
                 <i class="fas fa-heart"></i>
             </button>
-            <button id="downloadIcon" class="heart-button" aria-label="Download">
-                <i class="fas fa-download"></i>
-            </button>
+            
         </div>
 
         <div id="likedSongsContainer" class="player-container">
@@ -183,10 +181,7 @@
             <button id="clearLikedSongsButton">Clear Liked Songs</button>
         </div>
 
-        <div id="downloadContainer">
-            <h2>Downloaded Songs</h2>
-            <ul id="downloadedSongsList"></ul>
-        </div>
+     
     </div>
 
     <script>
@@ -296,57 +291,7 @@
         });
 
         // Download button functionality
-        downloadIcon.addEventListener('click', async function () {
-            if (!audioPlayer.src) {
-                alert('No song loaded');
-                return;
-            }
-
-            let downloadStatus = document.createElement('div');
-            downloadStatus.textContent = 'Downloading... 0%';
-            document.body.appendChild(downloadStatus);
-
-            try {
-                const response = await fetch(audioPlayer.src);
-                if (!response.ok) {
-                    throw new Error('Network response was not OK');
-                }
-
-                const contentLength = +response.headers.get('Content-Length');
-                const reader = response.body.getReader();
-                let loadedLength = 0;
-                const chunks = [];
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    if (done) break;
-
-                    chunks.push(value);
-                    loadedLength += value.length;
-
-                    if (contentLength) {
-                        const percentage = Math.round((loadedLength / contentLength) * 100);
-                        downloadStatus.textContent = `Downloading... ${percentage}%`;
-                    }
-                }
-
-                const blob = new Blob(chunks);
-                const url = URL.createObjectURL(blob);
-
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${songTitle.textContent}.mp3`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-
-                downloadStatus.textContent = 'Download complete!';
-                addDownloadedSong(songTitle.textContent, url);
-            } catch (error) {
-                downloadStatus.textContent = 'Failed to download this song';
-                alert('Failed to download this song. Please try again.');
-            }
-        });
+       
 
         // Update the liked songs list from local storage
         function updateLikedSongsList() {
