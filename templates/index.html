@@ -79,26 +79,56 @@
             width: 0;
         }
 
-        /* Like Button */
-        #likeButton {
+        /* Like and Download Buttons */
+        #likeButton, #downloadButton {
             background-color: transparent;
             border: none;
             color: #ff9800;
             font-size: 1.5em;
+            cursor: pointer;
         }
 
-        /* Download Button */
-        #downloadButton {
-            background-color: transparent;
-            border: none;
-            color: #ff9800;
-            font-size: 1.5em;
+        /* Like Button Hover Effect */
+        #likeButton:hover, #downloadButton:hover {
+            color: #ff5722;
         }
 
         /* Download Status */
         #downloadStatus {
             margin-top: 10px;
             font-size: 0.9em;
+            color: #ff9800;
+        }
+
+        /* Liked Songs Section */
+        #likedSongsList, #downloadedSongsList {
+            list-style-type: none;
+            padding: 0;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #likedSongsList li, #downloadedSongsList li {
+            background-color: #2c2c2c;
+            border-radius: 5px;
+            padding: 10px;
+            margin: 5px;
+            width: 80%;
+            text-align: left;
+            color: #fff;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #likedSongsList li:hover, #downloadedSongsList li:hover {
+            background-color: #ff5722;
+        }
+
+        /* Search Loading Message */
+        .loading {
             color: #ff9800;
         }
 
@@ -118,7 +148,7 @@
         </form>
 
         <!-- Searching Status -->
-        <p id="loading" class="loading">Searching...</p>
+        <p id="loading" class="loading" style="display: none;">Searching...</p>
 
         <!-- Player Section -->
         <div id="playerContainer">
@@ -187,6 +217,7 @@
                 return;
             }
 
+            loadingIndicator.style.display = 'inline'; // Show searching indicator
             loadingIndicator.textContent = `Searching for "${query}"...`;
 
             try {
@@ -208,8 +239,9 @@
                 audioPlayer.play();
                 songTitle.textContent = `Playing: ${query}`;
                 playPauseIcon.className = 'fas fa-pause';
-                loadingIndicator.textContent = '';
+                loadingIndicator.style.display = 'none'; // Hide searching indicator
             } catch (error) {
+                loadingIndicator.style.display = 'none';
                 loadingIndicator.textContent = 'Error occurred during search';
                 alert(`Failed to fetch song: ${error}`);
             }
@@ -281,6 +313,18 @@
             likedSongs.forEach(song => {
                 const li = document.createElement('li');
                 li.textContent = song.title;
+
+                // Create a button for each liked song
+                const removeButton = document.createElement('button');
+                removeButton.textContent = "Remove";
+                removeButton.addEventListener('click', () => {
+                    const index = likedSongs.indexOf(song);
+                    likedSongs.splice(index, 1);
+                    localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
+                    fetchLikedSongs();
+                });
+
+                li.appendChild(removeButton);
                 likedSongsList.appendChild(li);
             });
         }
@@ -295,7 +339,34 @@
             downloadStatus.textContent = 'Downloading...';
 
             const response = await fetch(audioPlayer.src);
-            const blob = await response.blob();
+            const reader = response.body.getReader();
+            const contentLength = +response.headers.get('Content-Length');
+            let loadedLength = 0;
+
+            const downloadProgress = (progress) => {
+                const percentage = (progress / contentLength) * 100;
+                downloadStatus.textContent = `Downloading: ${Math.round(percentage)}%`;
+            };
+
+            const stream = new ReadableStream({
+                start(controller) {
+                    function push() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                controller.close();
+                                return;
+                            }
+                            loadedLength += value.length;
+                            downloadProgress(loadedLength);
+                            controller.enqueue(value);
+                            push();
+                        });
+                    }
+                    push();
+                }
+            });
+
+            const blob = await new Response(stream).blob();
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -314,6 +385,7 @@
             li.textContent = title;
             li.dataset.url = url;
 
+            // Play the downloaded song when clicked
             li.addEventListener('click', function () {
                 audioPlayer.src = url;
                 audioPlayer.play();
