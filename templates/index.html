@@ -202,6 +202,7 @@
         const downloadIcon = document.getElementById('downloadIcon');
         const downloadedSongsList = document.getElementById('downloadedSongsList');
         const likeButton = document.getElementById('likeButton');
+        const likedSongsList = document.getElementById('likedSongsList');
 
         // Handle form submission
         form.addEventListener('submit', async function (event) {
@@ -267,28 +268,16 @@
                 progressBar.style.width = progressPercent + '%';
             }
 
-            const formatTime = time => {
+            const formatTime = (time) => {
                 const minutes = Math.floor(time / 60);
-                const seconds = Math.floor(time % 60).toString().padStart(2, '0');
-                return `${minutes}:${seconds}`;
+                const seconds = Math.floor(time % 60);
+                return `${minutes}:${seconds < 10 ? '0' + seconds : seconds}`;
             };
 
             timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
         });
 
-        // Allow users to click the progress bar to change the current time
-        progressContainer.addEventListener('click', function (event) {
-            const width = progressContainer.clientWidth;
-            const clickX = event.offsetX;
-            const duration = audioPlayer.duration || 0;
-
-            if (!isNaN(duration)) {
-                const newTime = (clickX / width) * duration;
-                audioPlayer.currentTime = newTime;
-            }
-        });
-
-        // Handle "like" button
+        // Like button functionality
         likeButton.addEventListener('click', function () {
             const songName = songTitle.textContent;
 
@@ -302,10 +291,11 @@
                 likedSongs.push(songName);
                 localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
                 alert(`${songName} has been liked!`);
+                updateLikedSongsList();
             }
         });
 
-        // Handle "download" button
+        // Download button functionality
         downloadIcon.addEventListener('click', async function () {
             if (!audioPlayer.src) {
                 alert('No song loaded');
@@ -358,12 +348,32 @@
             }
         });
 
-        // Function to add downloaded songs to the list
+        // Update the liked songs list from local storage
+        function updateLikedSongsList() {
+            likedSongsList.innerHTML = '';
+            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
+            likedSongs.forEach(song => {
+                const listItem = document.createElement('li');
+                listItem.textContent = song;
+                likedSongsList.appendChild(listItem);
+            });
+        }
+
+        // Add downloaded song to the list
         function addDownloadedSong(songName, songUrl) {
             const listItem = document.createElement('li');
             listItem.textContent = songName;
             downloadedSongsList.appendChild(listItem);
         }
+
+        // Clear liked songs from local storage
+        document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
+            localStorage.removeItem('likedSongs');
+            updateLikedSongsList();
+        });
+
+        // Initialize the liked songs list
+        updateLikedSongsList();
     </script>
 </body>
 </html>
