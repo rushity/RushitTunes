@@ -274,7 +274,7 @@
 
         // Like button functionality
         likeButton.addEventListener('click', function () {
-            const songName = songTitle;
+            const songName = songTitle.textContent;
 
             if (!songName || songName === 'No song playing') {
                 alert('No song is currently playing');
