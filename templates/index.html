@@ -20,10 +20,6 @@
             padding: 20px;
         }
 
-        .player-container {
-            margin: 20px 0;
-        }
-
         button {
             padding: 10px;
             margin: 5px;
@@ -78,33 +74,6 @@
             border-color: #ff5722;
         }
 
-        #searchButton, .heart-button, .play-pause-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: #ff9800;
-            font-size: 1.5em;
-        }
-
-        #searchButton:hover, .heart-button:hover, .play-pause-button:hover {
-            color: #ff5722;
-        }
-
-        #clearLikedSongsButton {
-            padding: 10px 15px;
-            background-color: #ff9800;
-            color: #fff;
-            border: none;
-            border-radius: 5px;
-            font-size: 1em;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-
-        #clearLikedSongsButton:hover {
-            background-color: #ff5722;
-        }
-
         .progress-container {
             display: flex;
             align-items: center;
@@ -131,18 +100,6 @@
             margin-left: 10px;
             font-size: 0.9em;
         }
-
-        @media (max-width: 600px) {
-            button {
-                padding: 8px;
-                font-size: 0.9em;
-            }
-
-            .progress-container {
-                flex-direction: column;
-                align-items: flex-start;
-            }
-        }
     </style>
 </head>
 <body>
@@ -160,7 +117,7 @@
 
         <div id="playerContainer" class="player-container">
             <p id="songTitle" class="song-title">No song playing</p>
-            <button id="playPauseButton" class="play-pause-button" aria-label="Play/Pause">
+            <button id="playPauseButton" aria-label="Play/Pause">
                 <i id="playPauseIcon" class="fas fa-play"></i>
             </button>
             <div class="progress-container">
@@ -169,20 +126,6 @@
                 </div>
                 <span class="time-display" id="timeDisplay">0:00 / 0:00</span>
             </div>
-            <button id="likeButton" class="heart-button" aria-label="Like">
-                <i class="fas fa-heart"></i>
-            </button>
-        </div>
-
-        <div id="likedSongsContainer" class="player-container">
-            <h2>Liked Songs</h2>
-            <ul id="likedSongsList"></ul>
-            <button id="clearLikedSongsButton">Clear Liked Songs</button>
-        </div>
-
-        <!-- Download Section -->
-        <div id="downloadContainer">
-            <h2>Downloaded Songs</h2>
             <button id="downloadButton">Download</button>
             <p id="downloadStatus">Ready to download</p>
             <ul id="downloadedSongsList"></ul>
@@ -195,17 +138,15 @@
         const songTitle = document.getElementById('songTitle');
         const audioPlayer = new Audio();
         const progressBar = document.getElementById('progress');
-        const progressContainer = document.querySelector('.progress-bar');
-        const timeDisplay = document.getElementById('timeDisplay');
         const playPauseButton = document.getElementById('playPauseButton');
         const playPauseIcon = document.getElementById('playPauseIcon');
         const downloadButton = document.getElementById('downloadButton');
         const downloadStatus = document.getElementById('downloadStatus');
         const downloadedSongsList = document.getElementById('downloadedSongsList');
 
-        // Handle form submission
+        // Handle form submission for song search
         form.addEventListener('submit', async function (event) {
-            event.preventDefault();  // Prevent form reload
+            event.preventDefault();
             const query = document.getElementById('query').value.trim();
 
             if (!query) {
@@ -241,13 +182,8 @@
             }
         });
 
-        // Play/Pause button functionality
+        // Play/Pause functionality
         playPauseButton.addEventListener('click', function () {
-            if (!audioPlayer.src) {
-                alert('No song is loaded. Please search for a song first.');
-                return;
-            }
-
             if (audioPlayer.paused) {
                 audioPlayer.play();
                 playPauseIcon.className = 'fas fa-pause';
@@ -257,165 +193,79 @@
             }
         });
 
-        // Update progress bar and time display
-        audioPlayer.addEventListener('timeupdate', function () {
-            const currentTime = audioPlayer.currentTime || 0;
-            const duration = audioPlayer.duration || 0;
-
-            if (!isNaN(duration)) {
-                const progressPercent = (currentTime / duration) * 100;
-                progressBar.style.width = progressPercent + '%';
-            }
-
-            const formatTime = time => {
-                const minutes = Math.floor(time / 60);
-                const seconds = Math.floor(time % 60).toString().padStart(2, '0');
-                return `${minutes}:${seconds}`;
-            };
-
-            timeDisplay.textContent = `${formatTime(currentTime)} / ${formatTime(duration)}`;
-        });
-
-        // Allow users to click the progress bar to change the current time
-        progressContainer.addEventListener('click', function (event) {
-            const width = progressContainer.clientWidth;
-            const clickX = event.offsetX;
-            const duration = audioPlayer.duration || 0;
-
-            if (!isNaN(duration)) {
-                const newTime = (clickX / width) * duration;
-                audioPlayer.currentTime = newTime;
-            }
-        });
-
-        // Handle "like" button
-        document.getElementById('likeButton').addEventListener('click', function () {
-            const songUrl = audioPlayer.src;
-
-            if (!songUrl) {
+        // Download and store song offline
+        downloadButton.addEventListener('click', async function () {
+            if (!audioPlayer.src) {
                 alert('No song is currently playing!');
                 return;
             }
 
+            const songUrl = audioPlayer.src;
             const songTitleText = songTitle.textContent.replace('Playing: ', '') || 'Unknown Song';
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-
-            if (likedSongs.some(song => song.url === songUrl)) {
-                alert('This song is already liked!');
-                return;
-            }
-
-            likedSongs.push({ title: songTitleText, url: songUrl });
-            localStorage.setItem('likedSongs', JSON.stringify(likedSongs));
-            fetchLikedSongs();
-            alert('Song liked successfully!');
-        });
-
-        // Display the liked songs from localStorage
-        function fetchLikedSongs() {
-            const likedSongs = JSON.parse(localStorage.getItem('likedSongs')) || [];
-            const likedSongsList = document.getElementById('likedSongsList');
-
-            likedSongsList.innerHTML = '';
-
-            likedSongs.forEach((song, index) => {
-                const li = document.createElement('li');
-                li.textContent = song.title;
-                li.dataset.url = song.url;
-                li.addEventListener('click', () => playSongFromLiked(song.url, index, likedSongs));
-                likedSongsList.appendChild(li);
-            });
-        }
-
-        // Play a liked song
-        function playSongFromLiked(url, index, songs) {
-            audioPlayer.src = url;
-            audioPlayer.play();
-            playPauseIcon.className = 'fas fa-pause';
-
-            songTitle.textContent = `Playing: ${songs[index].title}`;
-            audioPlayer.onended = () => {
-                const nextIndex = (index + 1) % songs.length;
-                playSongFromLiked(songs[nextIndex].url, nextIndex, songs);
-            };
-        }
-
-        // Clear liked songs
-        document.getElementById('clearLikedSongsButton').addEventListener('click', function () {
-            if (confirm('Are you sure you want to clear all liked songs?')) {
-                localStorage.removeItem('likedSongs');
-                fetchLikedSongs();
-                alert('Liked songs cleared!');
-            }
-        });
-
-        fetchLikedSongs();
-
-        // Handle Download Button
-        downloadButton.addEventListener('click', async function () {
-            if (!audioPlayer.src) {
-                alert('No song loaded');
-                return;
-            }
-
             downloadStatus.textContent = 'Downloading... 0%';
 
-            const response = await fetch(audioPlayer.src);
-            const reader = response.body.getReader();
-            const contentLength = +response.headers.get('Content-Length');
-            let loadedLength = 0;
+            try {
+                const response = await fetch(songUrl);
+                const reader = response.body.getReader();
+                const contentLength = +response.headers.get('Content-Length');
+                let loadedLength = 0;
+                let chunks = [];
 
-            const downloadProgress = (progress) => {
-                const percentage = Math.round((progress / contentLength) * 100);
-                downloadStatus.textContent = `Downloading... ${percentage}%`;
-            };
-
-            const stream = new ReadableStream({
-                start(controller) {
-                    function push() {
-                        reader.read().then(({ done, value }) => {
-                            if (done) {
-                                controller.close();
-                                return;
-                            }
-                            loadedLength += value.length;
-                            downloadProgress(loadedLength);
-                            controller.enqueue(value);
-                            push();
-                        });
-                    }
-                    push();
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    chunks.push(value);
+                    loadedLength += value.length;
+                    const percentage = Math.round((loadedLength / contentLength) * 100);
+                    downloadStatus.textContent = `Downloading... ${percentage}%`;
                 }
-            });
 
-            const blob = await new Response(stream).blob();
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = songTitle.textContent + '.mp3';  // Give it the song title as file name
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+                const blob = new Blob(chunks, { type: 'audio/mpeg' });
+                const base64Audio = await blobToBase64(blob);
 
-            downloadStatus.textContent = 'Download complete!';
-            addDownloadedSong(songTitle.textContent, url);
+                const downloadedSongs = JSON.parse(localStorage.getItem('downloadedSongs')) || [];
+                downloadedSongs.push({ title: songTitleText, audio: base64Audio });
+                localStorage.setItem('downloadedSongs', JSON.stringify(downloadedSongs));
+
+                downloadStatus.textContent = 'Download complete!';
+                alert(`"${songTitleText}" has been downloaded and stored offline.`);
+                fetchDownloadedSongs();
+            } catch (error) {
+                downloadStatus.textContent = 'Download failed!';
+                console.error('Error:', error);
+                alert('Failed to download the song.');
+            }
         });
 
-        // Add Downloaded Song to the list
-        function addDownloadedSong(title, url) {
-            const li = document.createElement('li');
-            li.textContent = title;
-            li.dataset.url = url;
-
-            // Play the downloaded song when clicked
-            li.addEventListener('click', function () {
-                audioPlayer.src = url;
-                audioPlayer.play();
-                songTitle.textContent = title;
+        function blobToBase64(blob) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result.split(',')[1]);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
             });
-
-            downloadedSongsList.appendChild(li);
         }
+
+        function fetchDownloadedSongs() {
+            const downloadedSongs = JSON.parse(localStorage.getItem('downloadedSongs')) || [];
+            downloadedSongsList.innerHTML = '';
+
+            downloadedSongs.forEach(song => {
+                const li = document.createElement('li');
+                li.textContent = song.title;
+                li.addEventListener('click', () => playSongFromStorage(song.audio, song.title));
+                downloadedSongsList.appendChild(li);
+            });
+        }
+
+        function playSongFromStorage(base64Audio, title) {
+            const audioUrl = `data:audio/mpeg;base64,${base64Audio}`;
+            audioPlayer.src = audioUrl;
+            audioPlayer.play();
+            songTitle.textContent = `Playing: ${title}`;
+        }
+
+        fetchDownloadedSongs();
     </script>
 </body>
 </html>
